@@ -1,1 +1,1 @@
-![GHA worflow badge backend](https://github.com/AI-Smarties/back/actions/workflows/main.yml)
+![GHA worflow badge](https://github.com/AI-Smarties/back/actions/workflows/main.yml)
