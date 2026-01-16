@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: g1-smart-glasses-backend-dep
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: g1-smart-glasses-backend
+  template:
+    metadata:
+      labels:
+        app: g1-smart-glasses-backend
+    spec:
+      containers:
+        - name: g1-smart-glasses-backend
+          image: veetimar/g1-backend:latest
+          ports:
+            - containerPort: 8000
