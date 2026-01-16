@@ -1,7 +1,7 @@
 kind: ImageStream
 apiVersion: image.openshift.io/v1
 metadata:
-  name: g1-smart-glasses-backend
+  name: g1-smart-glasses-backend-is
   labels:
     app: g1-smart-glasses-backend
 spec:

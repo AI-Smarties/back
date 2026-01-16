@@ -4,7 +4,7 @@ metadata:
   annotations:
     alpha.image.policy.openshift.io/resolve-names: "*"
     image.openshift.io/triggers: >-
-      [{"from":{"kind":"ImageStreamTag","name":"g1-smart-glasses-backend:staging","namespace":"ohtuprojekti-staging"},"fieldPath":"spec.template.spec.containers[?(@.name==\"g1-smart-glasses-backend\")].image","pause":"false"}]
+      [{"from":{"kind":"ImageStreamTag","name":"g1-smart-glasses-backend-is:staging","namespace":"ohtuprojekti-staging"},"fieldPath":"spec.template.spec.containers[?(@.name==\"g1-smart-glasses-backend\")].image","pause":"false"}]
   name: g1-smart-glasses-backend-dep
 spec:
   replicas: 1
@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: g1-smart-glasses-backend
-          image: g1-smart-glasses-backend:staging
+          image: g1-smart-glasses-backend-is:staging
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
