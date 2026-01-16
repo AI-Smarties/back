@@ -1,0 +1,18 @@
+kind: ImageStream
+apiVersion: image.openshift.io/v1
+metadata:
+  name: g1-smart-glasses-backend-is
+  labels:
+    app: g1-smart-glasses-backend
+spec:
+  lookupPolicy:
+    local: false
+  tags:
+    - name: staging
+      from:
+        kind: DockerImage
+        name: veetimar/g1-smart-glasses-backend:staging
+      importPolicy:
+        scheduled: true
+      referencePolicy:
+        type: Local
