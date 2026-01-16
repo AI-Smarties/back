@@ -1,6 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  annotations:
+    alpha.image.policy.openshift.io/resolve-names: "*"
+    image.openshift.io/triggers: >-
+      [{"from":{"kind":"ImageStreamTag","name":"g1-smart-glasses-backend:staging","namespace":"ohtuprojekti-staging"},"fieldPath":"spec.template.spec.containers[?(@.name==\"g1-smart-glasses-backend\")].image","pause":"false"}]
   name: g1-smart-glasses-backend-dep
 spec:
   replicas: 1
@@ -14,6 +18,7 @@ spec:
     spec:
       containers:
         - name: g1-smart-glasses-backend
-          image: veetimar/g1-backend:latest
+          image: g1-smart-glasses-backend:staging
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
