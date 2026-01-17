@@ -25,7 +25,12 @@ SECRET_KEY = "django-insecure-*rkz!a^^vyilj=bl0#+d0ibh7u%radm!d%sysuf2%ecvqh(7hd
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["g1-smart-glasses-backend-ohtuprojekti-staging.ext.ocp-prod-0.k8s.it.helsinki.fi"]
+# local development hosts and staging environment
+ALLOWED_HOSTS = [    
+    "127.0.0.1",
+    "localhost",
+    "g1-smart-glasses-backend-ohtuprojekti-staging.ext.ocp-prod-0.k8s.it.helsinki.fi"
+]
 
 
 # Application definition
