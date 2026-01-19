@@ -2,9 +2,9 @@ name: Backend CI (Django/Python)
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
 jobs:
   django:
@@ -65,6 +65,7 @@ jobs:
 
   docker:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
