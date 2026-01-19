@@ -31,7 +31,6 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     needs: tests
-    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -46,5 +45,5 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: ${{ vars.DOCKERHUB_USERNAME }}/g1-smart-glasses-backend:staging
