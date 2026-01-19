@@ -44,6 +44,5 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: ${{ vars.DOCKERHUB_USERNAME }}/g1-smart-glasses-backend:staging
