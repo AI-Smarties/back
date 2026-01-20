@@ -1,13 +1,15 @@
-FROM python:alpine
+FROM python:3.12-alpine
 
 WORKDIR /app
 
 EXPOSE 8000
 
+COPY requirements.txt .
+
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
+
 COPY . .
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN chmod +x /app/entrypoint.sh
 
-RUN python manage.py migrate
-
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["/app/entrypoint.sh"]
