@@ -2,9 +2,9 @@
 
 # AI Smarties – Backend (Python + Django)
 
-## Asennus ja ajaminen
+## Setup and Running
 
-## 1. Kloonaa repo ja mene hakemistoon
+## 1. Clone repo and navigate to directory
 
 ```bash
 git clone git@github.com:AI-Smarties/back.git
@@ -13,13 +13,13 @@ git clone git@github.com:AI-Smarties/back.git
 cd back
 ```
 
-## 2. Vaihda kehityshaaraan (dev)
+## 2. Switch to development branch (dev)
 
 ```bash
 git checkout dev
 ```
 
-## 3. Luo ja aktivoi virtuaaliympäristö
+## 3. Create and activate virtual environment
 
 ```bash
 python3 -m venv venv
@@ -28,7 +28,7 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-## 4. Asenna riippuvuudet ja aja migraatiot
+## 4. Install dependencies and run migrations
 
 ```bash
 pip install -r requirements.txt
@@ -37,7 +37,7 @@ pip install -r requirements.txt
 python manage.py migrate
 ```
 
-## 5. Käynnistä palvelin
+## 5. Start the server
 
 ```bash
 python manage.py runserver
@@ -45,19 +45,41 @@ python manage.py runserver
 
 ---
 
-## Päivittäinen kehitystyö
+## Daily development workflow
 
-Kun palaat koodaamaan, aktivoi virtuaaliympäristö ja tarkista päivitykset:
+When you return to coding, activate the virtual environment and check for updates:
 
-1. Aktivoi ympäristö: source venv/bin/activate
-2. Hae uusimmat muutokset: git pull origin dev
-3. Käynnistä palvelin: python manage.py runserver
+1. Activate environment: source venv/bin/activate
+2. Fetch latest changes: git pull origin dev
+3. Start server: python manage.py runserver
 
 ---
 
-## Projektin rakenne
+## Project structure
 
 - api/ – Django-sovellus (API-päätepisteet ja logiikka)
 - config/ – Projektin asetukset ja konfiguraatio
 - manage.py – Djangon hallintatyökalu
 - requirements.txt – Python-riippuvuudet
+
+---
+
+## API
+
+### POST /api/message/
+
+Request body:
+{
+  "text": "string"
+}
+
+Response:
+{
+  "reply": "string"
+}
+
+---
+
+### Frontend integration
+Backend is intended to be used with the Flutter frontend.
+In development, the backend runs on localhost (127.0.0.1:8000).

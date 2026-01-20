@@ -1,3 +1,18 @@
-from django.shortcuts import render
+from json import loads, JSONDecodeError
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 
-# Create your views here.
+@csrf_exempt
+def message_view(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Only POST allowed"}, status=405)
+
+    try:
+        body = loads(request.body)
+        text = body.get("text", "")
+    except JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    return JsonResponse({
+        "reply": f"Sait backendilta vastauksen: {text}"
+    })
