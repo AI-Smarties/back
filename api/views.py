@@ -1,5 +1,4 @@
-from django.shortcuts import render  # pylint: disable=unused-import
-import json
+from json import loads, JSONDecodeError
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
@@ -9,9 +8,9 @@ def message_view(request):
         return JsonResponse({"error": "Only POST allowed"}, status=405)
 
     try:
-        body = json.loads(request.body)
+        body = loads(request.body)
         text = body.get("text", "")
-    except Exception:
+    except JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
     return JsonResponse({
