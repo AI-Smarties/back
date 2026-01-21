@@ -2,6 +2,7 @@ name: Backend CI
 
 env:
   SECRET_KEY: "ci-secret"
+  DEBUG: "true"
 
 on:
   push:

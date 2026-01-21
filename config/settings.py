@@ -10,7 +10,23 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+from os import getenv
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
+
+def getbool(key, default=None):
+    value = getenv(key, default)
+    if value is None:
+        raise ValueError(f"Environment variable '{key}' is not set")
+    return value.lower() in ("1", "true", "t",)
+
+def getstr(key, default=None):
+    value = getenv(key, default)
+    if value is None:
+        raise ValueError(f"Environment variable '{key}' is not set")
+    return value
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,10 +36,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-*rkz!a^^vyilj=bl0#+d0ibh7u%radm!d%sysuf2%ecvqh(7hd"
+SECRET_KEY = getstr("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = getbool("DEBUG")
 
 # local development hosts and staging environment
 ALLOWED_HOSTS = [
