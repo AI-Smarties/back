@@ -10,10 +10,6 @@ RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN chmod +x /app/entrypoint.sh
-
-RUN chown -R guest:users /app
-
-USER guest
+RUN chmod -R 777 /app
 
 CMD ["/app/entrypoint.sh"]
