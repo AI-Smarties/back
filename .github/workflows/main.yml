@@ -33,7 +33,9 @@ jobs:
           python manage.py makemigrations --check --dry-run
           python manage.py test
       - name: Tests for coverage
-        run: coverage xml
+        run: |
+          coverage run ./manage.py test
+          coverage xml
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v5
         with:
