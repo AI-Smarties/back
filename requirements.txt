@@ -1,5 +1,6 @@
 asgiref==3.11.0
 astroid==4.0.3
+coverage==7.13.2
 dill==0.4.1
 Django==6.0.1
 django-cors-headers==4.9.0
