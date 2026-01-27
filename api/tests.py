@@ -18,7 +18,7 @@ class TestViews(TestCase):
     def test_message_post(self):
         data = {"text": "Test"}
         response = self.client.post(
-            self.message_url, json.dumps(data), content_type="json"
+            self.message_url, json.dumps(data), content_type="application/json"
         )
 
         self.assertEqual(response.status_code, 200)
