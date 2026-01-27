@@ -27,12 +27,11 @@ jobs:
       - name: Lint with Pylint
         run: |
           pylint **/*.py
-      - name: Django checks + tests
+      - name: Django checks
         run: |
           python manage.py check
           python manage.py makemigrations --check --dry-run
-          python manage.py test
-      - name: Tests for coverage
+      - name: Tests + coverage
         run: |
           coverage run ./manage.py test
           coverage xml
