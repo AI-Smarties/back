@@ -2,6 +2,7 @@ name: Backend CI
 
 env:
   SECRET_KEY: "ci-secret"
+  DEBUG: "true"
 
 on:
   push:
@@ -26,11 +27,20 @@ jobs:
       - name: Lint with Pylint
         run: |
           pylint **/*.py
-      - name: Django checks + tests
+      - name: Django checks
         run: |
           python manage.py check
           python manage.py makemigrations --check --dry-run
-          python manage.py test
+      - name: Tests + coverage
+        run: |
+          coverage run ./manage.py test
+          coverage xml
+      - name: Upload results to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: AI-Smarties/back
+
 
   docker:
     runs-on: ubuntu-latest
