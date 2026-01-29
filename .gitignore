@@ -17,7 +17,7 @@
 **/.vscode/
 
 # Tests
-**.pytest_cache/
+**/.pytest_cache/
 **/coverage.xml
 **/.coverage
 **/htmlcov/
