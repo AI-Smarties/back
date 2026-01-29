@@ -16,7 +16,8 @@
 **/.idea/
 **/.vscode/
 
-# Coverage
+# Tests
+**.pytest_cache/
 **/coverage.xml
 **/.coverage
 **/htmlcov/
