@@ -22,11 +22,6 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
-          env:
-            - name: SECRET_KEY
-              value: "staging-secret"
-            - name: DEBUG
-              value: "true"
           resources:
             limits:
               memory: "512Mi"
