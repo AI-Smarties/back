@@ -15,3 +15,8 @@
 **/.DS_Store
 **/.idea/
 **/.vscode/
+
+# Coverage
+**/coverage.xml
+**/.coverage
+**/htmlcov/
