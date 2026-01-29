@@ -8,8 +8,7 @@
 **/venv/
 **/.venv/
 
-# Django
-**/db.sqlite3
+# Environment variables
 **/.env
 
 # IDE / OS
