@@ -7,7 +7,7 @@ The backend provides a WebSocket-based audio stream and real-time speech recogni
 
 ## Setup and Running
 
-## 1. Clone repo and navigate to directory
+### 1. Clone repo and navigate to directory
 
 ```bash
 git clone git@github.com:AI-Smarties/back.git
@@ -16,44 +16,39 @@ git clone git@github.com:AI-Smarties/back.git
 cd back
 ```
 
-## 2. Switch to development branch (dev)
+### 2. Switch to development branch (dev)
 
-## Mac / Linux
+```bash
+git switch dev
+```
+
+### 3. Create and activate virtual environment
+
+#### Mac / Linux
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-## Windows
+#### Windows
 
 ```bash
 python -m venv venv
 .\venv\Scripts\activate
 ```
 
-## 3. Create and activate virtual environment
-
-```bash
-python3 -m venv venv
-```
-```bash
-source venv/bin/activate
-```
-
-## 4. Install dependencies
+### 4. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## 5. Google Cloud Authentication (ADC)
+### 5. Google Cloud Authentication (ADC)
 
 The backend uses Google Cloud Speech-to-Text and the Application Default Credentials (ADC) method.
 
-### Introduction:
-
-## STEP 1: Browser Setup (Google Cloud Console)
+#### STEP 1: Browser Setup (Google Cloud Console)
 
 Do these first in your web browser:
 
@@ -63,7 +58,7 @@ Do these first in your web browser:
 
 3. Enable the API: Search for "Cloud Speech-to-Text API" in the top search bar and click Enable.
 
-## STEP 2: CLI Setup (Terminal)
+#### STEP 2: CLI Setup (Terminal)
 
 Run these commands in your terminal:
 
@@ -81,7 +76,7 @@ Run these commands in your terminal:
    gcloud auth application-default set-quota-project [PROJECT_ID]
 ```
 
-## 6. Start the server
+### 6. Start the server
 
 ```bash
 fastapi run src/main.py --host 0.0.0.0 --port 8001
@@ -95,7 +90,7 @@ When you return to coding, activate the virtual environment and check for update
 
 1. Activate environment: source venv/bin/activate
 2. Fetch latest changes: git pull origin dev
-3. Start server: uvicorn main:app
+3. Start server: fastapi dev src/main.py
 
 ---
 
@@ -103,9 +98,7 @@ When you return to coding, activate the virtual environment and check for update
 
 - `src/main.py` – FastAPI application and WebSocket endpoint
 - `src/asr.py` – Streaming ASR (Google Speech-to-Text)
-- `requirements.txt` – Runtime dependencies
-- `venv/` – Virtual environment (not for version control)
+- `requirements.txt` – Dependencies
 
-### Frontend integration
-Backend is intended to be used with the Flutter frontend.
-In development, the backend runs on localhost (127.0.0.1:8001).
+## Frontend integration
+Backend is intended to be used with the [Flutter frontend](https://github.com/AI-Smarties/front)
