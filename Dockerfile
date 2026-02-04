@@ -1,6 +1,6 @@
 FROM python:3.12-alpine
 
-EXPOSE 8000
+EXPOSE 8001
 
 WORKDIR /app
 
@@ -12,4 +12,4 @@ COPY . .
 
 RUN chmod -R 777 /app
 
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["/app/entrypoint.sh"]
