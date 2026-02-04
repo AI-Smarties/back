@@ -1,7 +1,6 @@
 import json
-# pylint: disable=import-error
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from src.asr import StreamingASR
+from asr import StreamingASR
 
 app = FastAPI()
 
