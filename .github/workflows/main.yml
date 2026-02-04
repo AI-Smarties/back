@@ -2,9 +2,9 @@ name: Backend CI
 
 on:
   push:
-    branches: [main, dev]
+    branches: ["**"]
   pull_request:
-    branches: [main, dev]
+    branches: ["**"]
 
 jobs:
   tests:
@@ -22,7 +22,7 @@ jobs:
           pip install --no-cache-dir -r requirements.txt
       - name: Lint with Pylint
         run: |
-          pylint src/
+          PYTHONPATH=. pylint src/
       - name: Unittests + coverage
         run: |
           PYTHONPATH=. coverage run --branch -m pytest src/tests
