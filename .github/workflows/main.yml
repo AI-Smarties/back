@@ -22,10 +22,10 @@ jobs:
           pip install --no-cache-dir -r requirements.txt
       - name: Lint with Pylint
         run: |
-          pylint **/*.py
+          pylint src/
       - name: Unittests + coverage
         run: |
-          coverage run --branch -m pytest
+          PYTHONPATH=. coverage run --branch -m pytest src/tests
           coverage xml
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v5
