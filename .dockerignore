@@ -1,7 +1,26 @@
-venv/
-.git/
-__pycache__/
-.pytest_cache/
-.coverage
-*.pyc
+# Git
+**/.git
 
+# Python
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+
+# Virtual environments
+**/venv/
+**/.venv/
+
+# Environment variables
+**/.env
+
+# IDE / OS
+**/.DS_Store
+**/.idea/
+**/.vscode/
+
+# Tests
+**/.pytest_cache/
+**/coverage.xml
+**/.coverage
+**/htmlcov/
