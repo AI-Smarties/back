@@ -58,6 +58,7 @@ rignore==0.7.6
 rsa==4.9.1
 sentry-sdk==2.51.0
 shellingham==1.5.4
+SQLAlchemy==2.0.46
 starlette==0.50.0
 tomlkit==0.14.0
 typer==0.21.1
