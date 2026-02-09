@@ -6,8 +6,7 @@ from asr import StreamingASR
 app = FastAPI()
 
 
-# endpoint audiolle
-@app.websocket("/ws/audio/")
+@app.websocket("/ws/")
 async def audio_ws(ws: WebSocket):
     await ws.accept()
     await ws.send_text(json.dumps({"type": "control", "cmd": "ready"}))  # valmis vastaanottamaan
