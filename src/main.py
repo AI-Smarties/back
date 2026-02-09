@@ -9,7 +9,7 @@ app = FastAPI()
 @app.websocket("/ws/")
 async def audio_ws(ws: WebSocket):
     await ws.accept()
-    await ws.send_text(json.dumps({"type": "control", "cmd": "ready"}))  # valmis vastaanottamaan
+    await ws.send_text(json.dumps({"type": "control", "cmd": "ready"}))
 
     asr = None
 
@@ -25,9 +25,9 @@ async def audio_ws(ws: WebSocket):
 
             elif "text" in msg:  # kaikki muu kuin audio tulee tekstinä
                 payload = json.loads(msg["text"])
-                if payload["type"] == "control":  # ohjaussignaali
-                    if payload["cmd"] == "start":  # aloitetaan äänen streamaus
+                if payload["type"] == "control":
+                    if payload["cmd"] == "start":
                         asr = StreamingASR(ws)
-                    elif payload["cmd"] == "stop":  # lopetetaan äänen streamaus
+                    elif payload["cmd"] == "stop":
                         asr.stop()
                         asr = None
