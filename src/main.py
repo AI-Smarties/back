@@ -1,5 +1,5 @@
 import json
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket
 from asr import StreamingASR
 
 
@@ -10,30 +10,28 @@ app = FastAPI()
 @app.websocket("/ws/audio/")
 async def audio_ws(ws: WebSocket):
     await ws.accept()
-    await ws.send_text(json.dumps({"type": "ready"})) # lähetetään vahvistus valmiudesta
+    await ws.send_text(json.dumps({"type": "control", "cmd": "ready"})) # valmis vastaanottamaan
 
     asr = None
 
-    try:
-        while True:
-            msg = await ws.receive() # vastaanottaa audiota tai ohjaussignaalin
+    while True:
+        msg = await ws.receive() # vastaanottaa audiota tai ohjaussignaalin
 
-            if "bytes" in msg and msg["bytes"]: # audio tulee binäärinä
+        if msg["type"] == "websocket.disconnect":
+            break
+
+        elif msg["type"] == "websocket.receive":
+
+            payload = json.loads(msg["text"])
+
+            if "bytes" in payload and payload["bytes"]: # audio tulee binäärinä
                 if asr is None:
                     asr = StreamingASR(ws) # alustetaan ASR
-                asr.push_audio(msg["bytes"]) # pushataan audio
+                asr.push_audio(payload["bytes"]) # pushataan audio
                 continue
 
-            if "text" in msg and msg["text"]: # ohjaussignaali
-                data = json.loads(msg["text"])
-                if data.get("action") == "stop": # lopetetaan
+            if payload["type"] == "control": # ohjaussignaali
+                if payload["cmd"] == "stop": # lopetetaan
                     if asr:
                         asr.stop()
                     continue
-
-    except WebSocketDisconnect:
-        pass
-
-    finally:
-        if asr:
-            asr.stop()
