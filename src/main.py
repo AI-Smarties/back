@@ -22,16 +22,16 @@ async def audio_ws(ws: WebSocket):
 
         elif msg["type"] == "websocket.receive":
 
-            payload = json.loads(msg["text"])
-
-            if "bytes" in payload and payload["bytes"]: # audio tulee binäärinä
+            if "bytes" in msg: # audio tulee binäärinä
                 if asr is None:
                     asr = StreamingASR(ws) # alustetaan ASR
-                asr.push_audio(payload["bytes"]) # pushataan audio
+                asr.push_audio(msg["bytes"]) # pushataan audio
                 continue
 
-            if payload["type"] == "control": # ohjaussignaali
-                if payload["cmd"] == "stop": # lopetetaan
-                    if asr:
-                        asr.stop()
-                    continue
+            if "text" in msg:
+                payload = json.loads(msg["text"])
+                if payload["type"] == "control": # ohjaussignaali
+                    if payload["cmd"] == "stop": # lopetetaan
+                        if asr:
+                            asr.stop()
+                        continue
