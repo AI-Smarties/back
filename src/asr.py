@@ -48,7 +48,7 @@ class StreamingASR:
                 transcript = result.alternatives[0].transcript.strip()
                 if not result.is_final:
                     payload = {
-                        "type": "partial",
+                        "status": "partial",
                         "text": transcript
                     }
                 else:
@@ -59,7 +59,8 @@ class StreamingASR:
                             text += "."
                     self.final_buffer += text + " "
                     payload = {
-                        "type": "final",
+                        "status": "final",
                         "text": self.final_buffer.strip()
                     }
-                asyncio.run_coroutine_threadsafe(self.ws.send_text(json.dumps(payload)), self.loop)
+                data = {"type": "transcript", "data": payload}
+                asyncio.run_coroutine_threadsafe(self.ws.send_text(json.dumps(data)), self.loop)
