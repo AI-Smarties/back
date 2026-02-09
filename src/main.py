@@ -13,6 +13,7 @@ async def audio_ws(ws: WebSocket):
 
     asr = None
 
+    # pylint: disable=too-many-nested-blocks
     try:
         while True:
             msg = await ws.receive()
