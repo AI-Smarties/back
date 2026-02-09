@@ -2,4 +2,4 @@
 
 set -eu
 
-fastapi run src/main.py --host 0.0.0.0 --port 8001
+fastapi run src/main.py --host 0.0.0.0

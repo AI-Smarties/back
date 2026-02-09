@@ -21,7 +21,7 @@ spec:
           image: g1-smart-glasses-backend-is:staging
           imagePullPolicy: Always
           ports:
-            - containerPort: 8001
+            - containerPort: 8000
           resources:
             limits:
               memory: "512Mi"
