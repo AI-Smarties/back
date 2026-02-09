@@ -44,14 +44,13 @@ class StreamingASR:
             for result in response.results:
                 if not result.alternatives:
                     continue
-                transcript = result.alternatives[0].transcript.strip()
+                text = result.alternatives[0].transcript.strip()
                 if not result.is_final:
                     payload = {
                         "status": "partial",
-                        "text": transcript
+                        "text": text
                     }
                 else:
-                    text = transcript.strip()
                     if text:
                         text = text[0].upper() + text[1:]
                         if text[-1] not in ".!?":
