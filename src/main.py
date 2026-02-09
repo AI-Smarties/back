@@ -9,7 +9,7 @@ app = FastAPI()
 @app.websocket("/ws/")
 async def audio_ws(ws: WebSocket):
     await ws.accept()
-    await ws.send_text(json.dumps({"type": "control", "cmd": "ready"}))
+    await ws.send_json({"type": "control", "cmd": "ready"})
 
     asr = None
 
@@ -19,7 +19,7 @@ async def audio_ws(ws: WebSocket):
         if msg["type"] == "websocket.disconnect":
             break
 
-        elif msg["type"] == "websocket.receive":
+        if msg["type"] == "websocket.receive":
             if "bytes" in msg:  # audio tulee binäärinä
                 asr.push_audio(msg["bytes"])
 

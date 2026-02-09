@@ -1,4 +1,3 @@
-import json
 import threading
 import queue
 import asyncio
@@ -63,4 +62,4 @@ class StreamingASR:
                         "text": self.final_buffer.strip()
                     }
                 data = {"type": "transcript", "data": payload}
-                asyncio.run_coroutine_threadsafe(self.ws.send_text(json.dumps(data)), self.loop)
+                asyncio.run_coroutine_threadsafe(self.ws.send_json(data), self.loop)
