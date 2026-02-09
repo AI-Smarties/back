@@ -26,8 +26,8 @@ async def audio_ws(ws: WebSocket):
             elif "text" in msg:  # kaikki muu kuin audio tulee tekstinä
                 payload = json.loads(msg["text"])
                 if payload["type"] == "control":  # ohjaussignaali
-                    if payload["cmd"] == "start":  # aloitetaan
-                        asr = StreamingASR(ws)  # alustetaan ASR
-                    elif payload["cmd"] == "stop":  # lopetetaan
+                    if payload["cmd"] == "start":  # aloitetaan äänen streamaus
+                        asr = StreamingASR(ws)
+                    elif payload["cmd"] == "stop":  # lopetetaan äänen streamaus
                         asr.stop()
                         asr = None
