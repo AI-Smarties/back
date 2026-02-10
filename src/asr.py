@@ -11,13 +11,17 @@ class StreamingASR:
         self.audio_q = queue.Queue()
         self.final_buffer = ""
         self.client = speech.SpeechClient()
+        self.stopped = False
         self.worker = threading.Thread(target=self._worker, daemon=True)
         self.worker.start()
 
     def stop(self):
         self.audio_q.put(None)
+        self.stopped = True
 
     def push_audio(self, chunk: bytes):
+        if self.stopped:
+            raise RuntimeError("Cannot push audio after ASR is stopped")
         self.audio_q.put(chunk)
 
     def _worker(self):
