@@ -2,36 +2,44 @@ import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from asr import StreamingASR
 
+
 app = FastAPI()
 
 
-# endpoint audiolle
-@app.websocket("/ws/audio/")
+@app.websocket("/ws/")
 async def audio_ws(ws: WebSocket):
     await ws.accept()
-    await ws.send_text(json.dumps({"type": "ready"})) # aloitus signaali
+    await ws.send_json({"type": "control", "cmd": "ready"})
 
     asr = None
 
+    # pylint: disable=too-many-nested-blocks
     try:
         while True:
-            msg = await ws.receive() # vastaanottaa audion tai ohjaus signaalin
+            msg = await ws.receive()
 
-            if "bytes" in msg and msg["bytes"]: # audio tulee binäärinä
-                if asr is None:
-                    asr = StreamingASR(ws) # alustetaan ASR
-                asr.push_audio(msg["bytes"]) # pushataan audio
-                continue
+            if msg["type"] == "websocket.disconnect":
+                break
 
-            if "text" in msg and msg["text"]: # ohjaus signaali
-                data = json.loads(msg["text"])
-                if data.get("action") == "stop": # lopetetaan
-                    if asr:
-                        asr.stop() # lopetetaan ASR
-                    continue
+            if msg["type"] == "websocket.receive":
+                if "bytes" in msg:  # audio tulee binäärinä
+                    asr.push_audio(msg["bytes"])
 
+                elif "text" in msg:  # kaikki muu kuin audio tulee tekstinä
+                    try:
+                        payload = json.loads(msg["text"])
+                    except json.JSONDecodeError:
+                        await ws.send_json({"type": "error", "message": "Invalid JSON"})
+                        print("Invalid JSON", msg["text"])
+                        continue
+                    if payload["type"] == "control":
+                        if payload["cmd"] == "start":
+                            asr = StreamingASR(ws)
+                        elif payload["cmd"] == "stop":
+                            asr.stop()
+                            asr = None
     except WebSocketDisconnect:
-        pass
+        print("WebSocket disconnected")
     finally:
         if asr:
-            asr.stop() # lopetetaan ASR
+            asr.stop()
