@@ -5,15 +5,19 @@ from google.cloud import speech
 
 
 class StreamingASR:
-    def __init__(self, ws):
+    def __init__(self, ws, testing=False, client=None):
         self.ws = ws
-        self.loop = asyncio.get_running_loop()
+        self.testing = testing
         self.audio_q = queue.Queue()
         self.final_buffer = ""
-        self.client = speech.SpeechClient()
         self.stopped = False
-        self.worker = threading.Thread(target=self._worker, daemon=True)
-        self.worker.start()
+        if self.testing:
+            self.client = client
+        else:
+            self.client = speech.SpeechClient()
+            self.worker = threading.Thread(target=self._worker, daemon=True)
+            self.worker.start()
+            self.loop = asyncio.get_running_loop()
 
     def stop(self):
         self.audio_q.put(None)
@@ -23,6 +27,12 @@ class StreamingASR:
         if self.stopped:
             raise RuntimeError("Cannot push audio after ASR is stopped")
         self.audio_q.put(chunk)
+
+    def _dispatch(self, data):
+        if self.testing:
+            self.ws.send_json(data)
+            return
+        asyncio.run_coroutine_threadsafe(self.ws.send_json(data), self.loop)
 
     def _worker(self):
         def request_gen():
@@ -65,4 +75,4 @@ class StreamingASR:
                         "text": self.final_buffer.strip()
                     }
                 data = {"type": "transcript", "data": payload}
-                asyncio.run_coroutine_threadsafe(self.ws.send_json(data), self.loop)
+                self._dispatch(data)
