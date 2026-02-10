@@ -44,7 +44,28 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-### 5. Google Cloud Authentication (ADC)
+### 5. Set up PostgreSQL Database
+
+The application uses PostgreSQL.
+
+#### Docker Compose
+
+```bash
+docker compose up -d
+```
+
+or
+
+```bash
+docker-compose up -d
+```
+
+This starts a PostgreSQL container with the correct configuration. You can access the database at `localhost:5432`.
+
+The application will automatically connect to localhost when running locally
+(environment variables are not required for local development).
+
+### 6. Google Cloud Authentication (ADC)
 
 The backend uses Google Cloud Speech-to-Text and the Application Default Credentials (ADC) method.
 
@@ -76,7 +97,7 @@ Run these commands in your terminal:
    gcloud auth application-default set-quota-project [PROJECT_ID]
 ```
 
-### 6. Start the server
+### 7. Start the server
 
 ```bash
 fastapi run src/main.py --host 0.0.0.0
@@ -88,9 +109,10 @@ fastapi run src/main.py --host 0.0.0.0
 
 When you return to coding, activate the virtual environment and check for updates:
 
-1. Activate environment: source venv/bin/activate
-2. Fetch latest changes: git pull origin dev
-3. Start server: fastapi dev src/main.py
+1. Start database: `docker-compose up -d` (if using Docker Compose)
+2. Activate environment: `source venv/bin/activate`
+3. Fetch latest changes: `git pull origin dev`
+4. Start server: `fastapi dev src/main.py`
 
 ---
 
@@ -98,7 +120,11 @@ When you return to coding, activate the virtual environment and check for update
 
 - `src/main.py` – FastAPI application and WebSocket endpoint
 - `src/asr.py` – Streaming ASR (Google Speech-to-Text)
+- `src/db.py` – Database connection configuration
+- `src/models.py` – SQLAlchemy database models
 - `requirements.txt` – Dependencies
+- `docker-compose.yaml` – Local PostgreSQL setup
+- `manifests/` – Deployment configurations
 
 ## Frontend integration
 Backend is intended to be used with the [Flutter frontend](https://github.com/AI-Smarties/front)
