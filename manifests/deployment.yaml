@@ -6,6 +6,7 @@ metadata:
     image.openshift.io/triggers: >-
       [{"from":{"kind":"ImageStreamTag","name":"g1-smart-glasses-backend-is:staging","namespace":"ohtuprojekti-staging"},"fieldPath":"spec.template.spec.containers[?(@.name==\"g1-smart-glasses-backend\")].image","pause":"false"}]
   name: g1-smart-glasses-backend-dep
+  namespace: ohtuprojekti-staging
 spec:
   replicas: 1
   selector:
@@ -22,6 +23,11 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: g1-smart-glasses-db-config
+            - secretRef:
+                name: g1-smart-glasses-db-secret
           resources:
             limits:
               memory: "512Mi"
