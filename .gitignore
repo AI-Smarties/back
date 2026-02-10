@@ -24,3 +24,6 @@
 **/coverage.xml
 **/.coverage
 **/htmlcov/
+
+# Manifests
+manifests/configmap.yaml
