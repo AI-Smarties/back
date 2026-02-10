@@ -27,3 +27,4 @@
 
 # Manifests
 manifests/configmap.yaml
+manifests/secret.yaml
