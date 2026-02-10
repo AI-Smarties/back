@@ -1,45 +1,62 @@
 import json
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket
 from asr import StreamingASR
 
 
+# pylint: disable=invalid-name, global-statement
 app = FastAPI()
+asr = None
 
 
 @app.websocket("/ws/")
 async def audio_ws(ws: WebSocket):
     await ws.accept()
     await ws.send_json({"type": "control", "cmd": "ready"})
+    while True:
+        msg = await ws.receive()
+        if msg["type"] == "websocket.disconnect":
+            break
+        if msg["type"] == "websocket.receive":
+            if "bytes" in msg:  # audio tulee binäärinä
+                if not asr:
+                    await ws.send_json({"type": "error", "message": "ASR not started"})
+                    print("Received audio chunk but ASR not started")
+                    continue
+                asr.push_audio(msg["bytes"])
+            elif "text" in msg:  # kaikki muu kuin audio tulee tekstinä
+                await handle_text(msg["text"], ws)
 
-    asr = None
 
-    # pylint: disable=too-many-nested-blocks
+async def handle_text(text: str, ws: WebSocket):
+    global asr
     try:
-        while True:
-            msg = await ws.receive()
-
-            if msg["type"] == "websocket.disconnect":
-                break
-
-            if msg["type"] == "websocket.receive":
-                if "bytes" in msg:  # audio tulee binäärinä
-                    asr.push_audio(msg["bytes"])
-
-                elif "text" in msg:  # kaikki muu kuin audio tulee tekstinä
-                    try:
-                        payload = json.loads(msg["text"])
-                    except json.JSONDecodeError:
-                        await ws.send_json({"type": "error", "message": "Invalid JSON"})
-                        print("Invalid JSON", msg["text"])
-                        continue
-                    if payload["type"] == "control":
-                        if payload["cmd"] == "start":
-                            asr = StreamingASR(ws)
-                        elif payload["cmd"] == "stop":
-                            asr.stop()
-                            asr = None
-    except WebSocketDisconnect:
-        print("WebSocket disconnected")
-    finally:
-        if asr:
-            asr.stop()
+        payload = json.loads(text)
+    except json.JSONDecodeError:
+        await ws.send_json({"type": "error", "message": "Invalid JSON"})
+        print(f"Invalid JSON: {text}")
+        return
+    if "type" not in payload:
+        await ws.send_json({"type": "error", "message": "Missing type in message"})
+        print(f"Missing type in message: {payload}")
+        return
+    if payload["type"] == "control":
+        if "cmd" not in payload:
+            await ws.send_json({"type": "error", "message": "Missing command in control message"})
+            print(f"Missing command in control message: {payload}")
+            return
+        if payload["cmd"] == "start":
+            if asr:
+                asr.stop()
+            asr = StreamingASR(ws)
+        elif payload["cmd"] == "stop":
+            if asr:
+                asr.stop()
+            asr = None
+        else:
+            await ws.send_json({"type": "error", "message": "Unknown command"})
+            print(f"Unknown command: {payload['cmd']}")
+            return
+    else:
+        await ws.send_json({"type": "error", "message": "Unknown message type"})
+        print(f"Unknown message type: {payload['type']}")
+        return
