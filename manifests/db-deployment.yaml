@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: g1-smart-glasses-db-dep
+  namespace: ohtuprojekti-staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: g1-smart-glasses-db
+  template:
+    metadata:
+      labels:
+        app: g1-smart-glasses-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: g1-smart-glasses-db-config
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+              subPath: postgres
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: g1-smart-glasses-claim
