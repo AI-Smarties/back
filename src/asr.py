@@ -4,6 +4,7 @@ import asyncio
 from google.cloud import speech
 
 
+# pylint: disable=too-many-instance-attributes
 class StreamingASR:
     def __init__(self, ws, testing=False, client=None):
         self.ws = ws
