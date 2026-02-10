@@ -21,6 +21,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: g1-smart-glasses-db-config
+            - secretRef:
+                name: g1-smart-glasses-db-secret
           volumeMounts:
             - name: postgres-storage
               mountPath: /var/lib/postgresql/data

@@ -26,6 +26,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: g1-smart-glasses-db-config
+            - secretRef:
+                name: g1-smart-glasses-db-secret
           resources:
             limits:
               memory: "512Mi"
