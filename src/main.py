@@ -18,6 +18,10 @@ async def audio_ws(ws: WebSocket):
             break
         if msg["type"] == "websocket.receive":
             if "bytes" in msg:  # audio tulee binäärinä
+                if not asr:
+                    await ws.send_json({"type": "error", "message": "ASR not started"})
+                    print("Received audio chunk but ASR not started")
+                    continue
                 asr.push_audio(msg["bytes"])
             elif "text" in msg:  # kaikki muu kuin audio tulee tekstinä
                 await handle_text(msg["text"], ws)

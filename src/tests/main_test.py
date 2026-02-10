@@ -48,3 +48,11 @@ def test_server_handles_missing_command():
         data = websocket.receive_json()
         assert data["type"] == "error"
         assert data["message"] == "Missing command in control message"
+
+def test_server_handles_audio_before_asr():
+    with client.websocket_connect("/ws/") as websocket:
+        websocket.receive_json()  # ready signal
+        websocket.send_bytes(b"audio chunk")
+        data = websocket.receive_json()
+        assert data["type"] == "error"
+        assert data["message"] == "ASR not started"
