@@ -26,5 +26,5 @@
 **/htmlcov/
 
 # Manifests
-manifests/configmap.yaml
-manifests/secret.yaml
+**/*configmap*.yaml
+**/*secret*.yaml
