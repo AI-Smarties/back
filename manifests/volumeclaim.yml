@@ -1,6 +1,5 @@
-kind: PersistentVolumeClaim
 apiVersion: v1
-
+kind: PersistentVolumeClaim
 metadata:
   name: g1-smart-glasses-claim
   namespace: ohtuprojekti-staging

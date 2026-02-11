@@ -25,9 +25,13 @@ spec:
             - containerPort: 8000
           envFrom:
             - configMapRef:
-                name: g1-smart-glasses-db-config
+                name: g1-smart-glasses-config
             - secretRef:
-                name: g1-smart-glasses-db-secret
+                name: g1-smart-glasses-secret
+          volumeMounts:
+            - name: gcp-secret
+              mountPath: /app/secrets/gcp
+              readOnly: true
           resources:
             limits:
               memory: "512Mi"
@@ -35,3 +39,10 @@ spec:
             requests:
               memory: "50Mi"
               cpu: "50m"
+      volumes:
+        - name: gcp-secret
+          secret:
+            secretName: g1-smart-glasses-gcp-secret
+            items:
+              - key: sa.json
+                path: sa.json
