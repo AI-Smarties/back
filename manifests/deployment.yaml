@@ -6,6 +6,7 @@ metadata:
     image.openshift.io/triggers: >-
       [{"from":{"kind":"ImageStreamTag","name":"g1-smart-glasses-backend-is:staging","namespace":"ohtuprojekti-staging"},"fieldPath":"spec.template.spec.containers[?(@.name==\"g1-smart-glasses-backend\")].image","pause":"false"}]
   name: g1-smart-glasses-backend-dep
+  namespace: ohtuprojekti-staging
 spec:
   replicas: 1
   selector:
@@ -22,11 +23,15 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
-          env:
-            - name: SECRET_KEY
-              value: "staging-secret"
-            - name: DEBUG
-              value: "true"
+          envFrom:
+            - configMapRef:
+                name: g1-smart-glasses-config
+            - secretRef:
+                name: g1-smart-glasses-secret
+          volumeMounts:
+            - name: gcp-secret
+              mountPath: /app/secrets/gcp
+              readOnly: true
           resources:
             limits:
               memory: "512Mi"
@@ -34,3 +39,10 @@ spec:
             requests:
               memory: "50Mi"
               cpu: "50m"
+      volumes:
+        - name: gcp-secret
+          secret:
+            secretName: g1-smart-glasses-gcp-secret
+            items:
+              - key: sa.json
+                path: sa.json

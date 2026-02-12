@@ -2,6 +2,4 @@
 
 set -eu
 
-python manage.py migrate --noinput
-
-exec python manage.py runserver 0.0.0.0:8000
+fastapi run src/main.py --host 0.0.0.0
