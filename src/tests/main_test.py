@@ -20,7 +20,7 @@ def test_server_handles_invalid_json():
 def test_server_handles_unknown_command():
     with client.websocket_connect("/ws/") as websocket:
         websocket.receive_json()  # ready signal
-        websocket.send_text('{"type": "control", "cmd": "unknown"}')
+        websocket.send_json({"type": "control", "cmd": "unknown"})
         data = websocket.receive_json()
         assert data["type"] == "error"
         assert data["message"] == "Unknown command"
@@ -28,7 +28,7 @@ def test_server_handles_unknown_command():
 def test_server_handles_unknown_message_type():
     with client.websocket_connect("/ws/") as websocket:
         websocket.receive_json()  # ready signal
-        websocket.send_text('{"type": "unknown", "cmd": "start"}')
+        websocket.send_json({"type": "unknown", "cmd": "start"})
         data = websocket.receive_json()
         assert data["type"] == "error"
         assert data["message"] == "Unknown message type"
@@ -36,7 +36,7 @@ def test_server_handles_unknown_message_type():
 def test_server_handles_missing_type():
     with client.websocket_connect("/ws/") as websocket:
         websocket.receive_json()  # ready signal
-        websocket.send_text('{"cmd": "start"}')
+        websocket.send_json({"cmd": "start"})
         data = websocket.receive_json()
         assert data["type"] == "error"
         assert data["message"] == "Missing type in message"
@@ -44,7 +44,7 @@ def test_server_handles_missing_type():
 def test_server_handles_missing_command():
     with client.websocket_connect("/ws/") as websocket:
         websocket.receive_json()  # ready signal
-        websocket.send_text('{"type": "control"}')
+        websocket.send_json({"type": "control"})
         data = websocket.receive_json()
         assert data["type"] == "error"
         assert data["message"] == "Missing command in control message"
