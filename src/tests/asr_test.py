@@ -14,7 +14,7 @@ class StubClient:
     def __init__(self, responses):
         self._responses = responses
 
-    def streaming_recognize(self, config, requests):  # pylint: disable=unused-argument
+    def streaming_recognize(self, requests):  # pylint: disable=unused-argument
         return iter(self._responses)
 
 def resp(transcript: str, is_final: bool):
