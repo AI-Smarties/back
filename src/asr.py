@@ -1,7 +1,9 @@
 import threading
 import queue
 import asyncio
-from google.cloud import speech
+from google import auth
+from google.cloud.speech_v2 import SpeechClient
+from google.cloud.speech_v2.types import cloud_speech
 
 
 # pylint: disable=too-many-instance-attributes
@@ -15,7 +17,7 @@ class StreamingASR:
         if self.testing:
             self.client = client
         else:
-            self.client = speech.SpeechClient()
+            self.client = SpeechClient()
             self.worker = threading.Thread(target=self._worker, daemon=True)
             self.worker.start()
             self.loop = asyncio.get_running_loop()
@@ -36,25 +38,46 @@ class StreamingASR:
         asyncio.run_coroutine_threadsafe(self.ws.send_json(data), self.loop)
 
     def _worker(self):
+        if self.testing:
+            recognizer = "test"
+        else:
+            _, project = auth.default()
+            if not project:
+                raise RuntimeError(
+                    "Could not determine GCP project id from Application Default Credentials. "
+                    "If running locally, set it via gcloud (gcloud config set project ...)."
+                )
+            recognizer = self.client.recognizer_path(project, "global", "_")
+
+        config = cloud_speech.StreamingRecognitionConfig(
+            config=cloud_speech.RecognitionConfig(
+                explicit_decoding_config=cloud_speech.ExplicitDecodingConfig(
+                    encoding=cloud_speech.ExplicitDecodingConfig.AudioEncoding.LINEAR16,
+                    sample_rate_hertz=16000,
+                    audio_channel_count=1,
+                ),
+                language_codes=["fi-FI"],
+                features=cloud_speech.RecognitionFeatures(
+                    enable_automatic_punctuation=True,
+                ),
+            ),
+            streaming_features=cloud_speech.StreamingRecognitionFeatures(
+                interim_results=True,
+            ),
+        )
+
         def request_gen():
+            yield cloud_speech.StreamingRecognizeRequest(
+                recognizer=recognizer,
+                streaming_config=config,
+            )
             while True:
                 chunk = self.audio_q.get()
                 if chunk is None:
                     break
-                yield speech.StreamingRecognizeRequest(audio_content=chunk)
+                yield cloud_speech.StreamingRecognizeRequest(audio=chunk)
 
-        config = speech.StreamingRecognitionConfig(
-            config=speech.RecognitionConfig(
-                encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-                sample_rate_hertz=16000,
-                language_code="fi-FI",
-                enable_automatic_punctuation=True,
-            ),
-            interim_results=True,
-        )
-
-        # pylint: disable=unexpected-keyword-arg
-        responses = self.client.streaming_recognize(config=config, requests=request_gen())
+        responses = self.client.streaming_recognize(requests=request_gen())
         for response in responses:
             for result in response.results:
                 if not result.alternatives:
