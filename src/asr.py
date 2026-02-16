@@ -38,39 +38,36 @@ class StreamingASR:
         asyncio.run_coroutine_threadsafe(self.ws.send_json(data), self.loop)
 
     def _worker(self):
-        if self.testing:
-            recognizer = "test"
-        else:
+        def request_gen():
             _, project = auth.default()
             if not project:
                 raise RuntimeError(
-                    "Could not determine GCP project id from Application Default Credentials. "
-                    "If running locally, set it via gcloud (gcloud config set project ...)."
+                    "Could not determine GCP project id from Application Default Credentials."
                 )
             recognizer = self.client.recognizer_path(project, "global", "_")
 
-        config = cloud_speech.StreamingRecognitionConfig(
-            config=cloud_speech.RecognitionConfig(
-                explicit_decoding_config=cloud_speech.ExplicitDecodingConfig(
-                    encoding=cloud_speech.ExplicitDecodingConfig.AudioEncoding.LINEAR16,
-                    sample_rate_hertz=16000,
-                    audio_channel_count=1,
+            config = cloud_speech.StreamingRecognitionConfig(
+                config=cloud_speech.RecognitionConfig(
+                    explicit_decoding_config=cloud_speech.ExplicitDecodingConfig(
+                        encoding=cloud_speech.ExplicitDecodingConfig.AudioEncoding.LINEAR16,
+                        sample_rate_hertz=16000,
+                        audio_channel_count=1,
+                    ),
+                    language_codes=["fi-FI"],
+                    features=cloud_speech.RecognitionFeatures(
+                        enable_automatic_punctuation=True,
+                    ),
                 ),
-                language_codes=["fi-FI"],
-                features=cloud_speech.RecognitionFeatures(
-                    enable_automatic_punctuation=True,
+                streaming_features=cloud_speech.StreamingRecognitionFeatures(
+                    interim_results=True,
                 ),
-            ),
-            streaming_features=cloud_speech.StreamingRecognitionFeatures(
-                interim_results=True,
-            ),
-        )
+            )
 
-        def request_gen():
             yield cloud_speech.StreamingRecognizeRequest(
                 recognizer=recognizer,
                 streaming_config=config,
             )
+
             while True:
                 chunk = self.audio_q.get()
                 if chunk is None:
