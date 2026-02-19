@@ -6,8 +6,7 @@ from google.cloud.speech_v2 import SpeechClient
 from google.cloud.speech_v2.types import cloud_speech
 
 
-# pylint: disable=too-many-instance-attributes
-class StreamingASR:
+class StreamingASR:  # pylint: disable=too-many-instance-attributes
     def __init__(self, ws, testing=False, client=None):
         self.ws = ws
         self.testing = testing

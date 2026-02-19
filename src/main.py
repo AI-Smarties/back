@@ -3,9 +3,8 @@ from fastapi import FastAPI, WebSocket
 from asr import StreamingASR
 
 
-# pylint: disable=invalid-name, global-statement
 app = FastAPI()
-asr = None
+asr = None  # pylint: disable=invalid-name
 
 
 @app.websocket("/ws/")
@@ -28,7 +27,7 @@ async def audio_ws(ws: WebSocket):
 
 
 async def handle_text(text: str, ws: WebSocket):
-    global asr
+    global asr  # pylint: disable=global-statement
     try:
         payload = json.loads(text)
     except json.JSONDecodeError:
