@@ -25,8 +25,7 @@ spec:
                 name: g1-smart-glasses-secret
           volumeMounts:
             - name: postgres-storage
-              mountPath: /var/lib/postgresql/data
-              subPath: postgres
+              mountPath: /var/lib/postgresql
           resources:
             limits:
               memory: "512Mi"
