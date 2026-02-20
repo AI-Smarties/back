@@ -1,6 +1,7 @@
 import json
 from fastapi import FastAPI, WebSocket
 from asr import StreamingASR
+import db_utils
 
 
 app = FastAPI()
@@ -59,3 +60,19 @@ async def handle_text(text: str, ws: WebSocket):
         await ws.send_json({"type": "error", "message": "Unknown message type"})
         print(f"Unknown message type: {payload['type']}")
         return
+
+
+@app.get("/get/conversations")
+async def get_conversations(conversation_id: int = None):
+    if conversation_id:
+        return await db_utils.get_conversation_by_id(conversation_id)
+    return await db_utils.get_conversations()
+
+
+@app.get("/get/vectors")
+async def get_vectors(vector_id: int = None, conversation_id: int = None):
+    if vector_id:
+        return await db_utils.get_vector_by_id(vector_id)
+    if conversation_id:
+        return await db_utils.get_vectors_by_conversation_id(conversation_id)
+    return await db_utils.get_vectors()
