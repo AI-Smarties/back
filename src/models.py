@@ -18,10 +18,9 @@ class Vectors(Base):
     embedding = Column(VECTOR(EMBEDDING_DIMENSIONS), nullable=False)
     conversation_id = Column(
         Integer,
-        ForeignKey("conversations.id"),
+        ForeignKey("conversations.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
-        ondelete="CASCADE",
     )
 
     conversation = relationship("Conversations", back_populates="vectors")
@@ -36,10 +35,9 @@ class Conversations(Base):
     summary = Column(String, nullable=False)
     category_id = Column(
         Integer,
-        ForeignKey("categories.id"),
+        ForeignKey("categories.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
-        ondelete="CASCADE",
     )
 
     category = relationship("Categories", back_populates="conversations")
