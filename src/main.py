@@ -62,13 +62,6 @@ async def handle_text(text: str, ws: WebSocket):
         return
 
 
-@app.get("/get/conversations")
-async def get_conversations(conversation_id: int = None):
-    if conversation_id:
-        return await db_utils.get_conversation_by_id(conversation_id)
-    return await db_utils.get_conversations()
-
-
 @app.get("/get/vectors")
 async def get_vectors(vector_id: int = None, conversation_id: int = None):
     if vector_id:
@@ -76,3 +69,19 @@ async def get_vectors(vector_id: int = None, conversation_id: int = None):
     if conversation_id:
         return await db_utils.get_vectors_by_conversation_id(conversation_id)
     return await db_utils.get_vectors()
+
+
+@app.get("/get/conversations")
+async def get_conversations(conversation_id: int = None):
+    if conversation_id:
+        return await db_utils.get_conversation_by_id(conversation_id)
+    return await db_utils.get_conversations()
+
+
+@app.get("/get/categories")
+async def get_categories(category_id: int = None, name: str = None):
+    if category_id:
+        return await db_utils.get_category_by_id(category_id)
+    if name:
+        return await db_utils.get_category_by_name(name)
+    return await db_utils.get_categories()
