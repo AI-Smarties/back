@@ -1,23 +1,7 @@
 from db import sessionlocal
 from models import Conversations, Vectors, Categories
 
-async def create_conversation(name, date, summary, category_id):
-    with sessionlocal.begin() as session:
-        pass
-
-async def delete_conversation(conversation_id):
-    with sessionlocal.begin() as session:
-        conv = session.get(Conversations, conversation_id)
-        if conv:
-            session.delete(conv)
-
-async def get_conversation_by_id(conversation_id):
-    with sessionlocal() as session:
-        pass
-
-async def get_conversations():
-    with sessionlocal() as session:
-        pass
+# pylint: disable=no-member
 
 async def create_vector(text, conversation_id):
     with sessionlocal.begin() as session:
@@ -41,6 +25,32 @@ async def get_vectors():
     with sessionlocal() as session:
         pass
 
+async def create_conversation(name, date, summary, category_id):
+    with sessionlocal.begin() as session:
+        pass
+
+async def delete_conversation(conversation_id):
+    with sessionlocal.begin() as session:
+        conv = session.get(Conversations, conversation_id)
+        if conv:
+            session.delete(conv)
+
+async def get_conversation_by_id(conversation_id):
+    with sessionlocal() as session:
+        pass
+
+async def get_conversations_by_category_id(category_id):
+    with sessionlocal() as session:
+        pass
+
+async def get_conversations_by_category_name(category_name):
+    with sessionlocal() as session:
+        pass
+
+async def get_conversations():
+    with sessionlocal() as session:
+        pass
+
 async def create_category(name):
     with sessionlocal.begin() as session:
         pass
@@ -52,6 +62,10 @@ async def delete_category(category_id):
             session.delete(cat)
 
 async def get_category_by_id(category_id):
+    with sessionlocal() as session:
+        pass
+
+async def get_category_by_name(name):
     with sessionlocal() as session:
         pass
 
