@@ -24,7 +24,6 @@ class StreamingGenAIASR:
         if self.testing:
             self.client = client
         else:
-            # Initialize GenAI client with Vertex AI
             self.client = genai.Client(vertexai=True)
             self.worker = threading.Thread(target=self._worker, daemon=True)
             self.worker.start()
@@ -51,12 +50,10 @@ class StreamingGenAIASR:
         Uses Gemini's multimodal streaming capabilities for real-time transcription.
         """
         try:
-            # Configure the model for audio transcription
-            model_id = "gemini-2.0-flash-exp"  # Use latest Gemini model with audio support
+            model_id = "gemini-2.0-flash-exp"
 
-            # Create streaming config
             config = types.GenerateContentConfig(
-                temperature=0.0,  # Deterministic output for transcription
+                temperature=0.0,
                 system_instruction="Muuta kuulemasi suomenkielinen audio tekstiksi. "
                                 "Älä sisällytä vastaukseesi mitään ylimääräistä."
             )
@@ -69,18 +66,16 @@ class StreamingGenAIASR:
             while True:
                 chunk = self.audio_q.get()
                 if chunk is None:
-                    # Process remaining buffer if any
                     if audio_buffer.tell() > 0:
                         self._process_audio_chunk(audio_buffer.getvalue(), config, model_id)
                     break
 
                 audio_buffer.write(chunk)
 
-                # Process when buffer reaches threshold>
                 if audio_buffer.tell() >= chunk_size_threshold:
                     audio_data = audio_buffer.getvalue()
                     self._process_audio_chunk(audio_data, config, model_id)
-                    audio_buffer = io.BytesIO()  # Reset buffer
+                    audio_buffer = io.BytesIO()
 
         except Exception as e:
             error_data = {"type": "error", "message": f"GenAI ASR error: {str(e)}"}
@@ -93,24 +88,20 @@ class StreamingGenAIASR:
         Sends audio as inline data with proper MIME type.
         """
         try:
-            # Create audio part with proper format
             # PCM 16kHz, 16-bit, mono matches the Speech API format
             audio_part = types.Part.from_bytes(
                 data=audio_data,
                 mime_type="audio/pcm"  # Or "audio/wav" if you add WAV header
             )
 
-            # Create prompt for transcription
-            prompt_part = types.Part.from_text(text="Transcribe this audio in Finnish:")
+            prompt_part = types.Part.from_text(text="Litteroi tämä audio suomeksi:")
 
-            # Stream the request
             response_stream = self.client.models.generate_content_stream(
                 model=model_id,
                 contents=[prompt_part, audio_part],
                 config=config
             )
 
-            # Process streaming response
             partial_text = ""
             for chunk in response_stream:
                 if hasattr(chunk, 'text') and chunk.text:
@@ -127,7 +118,6 @@ class StreamingGenAIASR:
             # Send final result
             if partial_text.strip():
                 text = partial_text.strip()
-                # Capitalize first letter and add period if needed
                 if text:
                     text = text[0].upper() + text[1:]
                     if text[-1] not in ".!?":
