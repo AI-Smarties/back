@@ -72,9 +72,13 @@ async def get_vectors(vector_id: int = None, conversation_id: int = None):
 
 
 @app.get("/get/conversations")
-async def get_conversations(conversation_id: int = None):
-    if conversation_id:
-        return await db_utils.get_conversation_by_id(conversation_id)
+async def get_conversations(conv_id: int = None, cat_id: int = None, cat_name: str = None):
+    if conv_id:
+        return await db_utils.get_conversation_by_id(conv_id)
+    if cat_id:
+        return await db_utils.get_conversations_by_category_id(cat_id)
+    if cat_name:
+        return await db_utils.get_conversations_by_category_name(cat_name)
     return await db_utils.get_conversations()
 
 
