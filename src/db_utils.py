@@ -1,5 +1,5 @@
 from db import sessionlocal
-from models import Conversations, Vectors, Categories
+from models import Conversation, Vector, Category
 
 # pylint: disable=no-member
 
@@ -9,7 +9,7 @@ async def create_vector(text, conversation_id):
 
 async def delete_vector(vector_id):
     with sessionlocal.begin() as session:
-        vec = session.get(Vectors, vector_id)
+        vec = session.get(Vector, vector_id)
         if vec:
             session.delete(vec)
 
@@ -31,7 +31,7 @@ async def create_conversation(name, date, summary, category_id):
 
 async def delete_conversation(conversation_id):
     with sessionlocal.begin() as session:
-        conv = session.get(Conversations, conversation_id)
+        conv = session.get(Conversation, conversation_id)
         if conv:
             session.delete(conv)
 
@@ -57,7 +57,7 @@ async def create_category(name):
 
 async def delete_category(category_id):
     with sessionlocal.begin() as session:
-        cat = session.get(Categories, category_id)
+        cat = session.get(Category, category_id)
         if cat:
             session.delete(cat)
 

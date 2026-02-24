@@ -10,7 +10,7 @@ EMBEDDING_DIMENSIONS = 768
 # pylint: disable=too-few-public-methods
 
 
-class Vectors(Base):
+class Vector(Base):
     __tablename__ = "vectors"
 
     id = Column(Integer, primary_key=True)
@@ -23,10 +23,10 @@ class Vectors(Base):
         index=True,
     )
 
-    conversation = relationship("Conversations", back_populates="vectors")
+    conversation = relationship("Conversation", back_populates="vectors")
 
 
-class Conversations(Base):
+class Conversation(Base):
     __tablename__ = "conversations"
 
     id = Column(Integer, primary_key=True)
@@ -40,23 +40,23 @@ class Conversations(Base):
         index=True,
     )
 
-    category = relationship("Categories", back_populates="conversations")
+    category = relationship("Category", back_populates="conversations")
     vectors = relationship(
-        "Vectors",
+        "Vector",
         back_populates="conversation",
         cascade="all, delete",
         passive_deletes=True,
     )
 
 
-class Categories(Base):
+class Category(Base):
     __tablename__ = "categories"
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True, index=True)
 
     conversations = relationship(
-        "Conversations",
+        "Conversation",
         back_populates="category",
         cascade="all, delete",
         passive_deletes=True,
