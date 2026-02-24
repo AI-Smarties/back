@@ -63,11 +63,11 @@ async def handle_text(text: str, ws: WebSocket):
 
 
 @app.get("/get/vectors")
-async def get_vectors(vector_id: int = None, conversation_id: int = None):
-    if vector_id:
-        return await db_utils.get_vector_by_id(vector_id)
-    if conversation_id:
-        return await db_utils.get_vectors_by_conversation_id(conversation_id)
+async def get_vectors(vec_id: int = None, conv_id: int = None):
+    if vec_id:
+        return await db_utils.get_vector_by_id(vec_id)
+    if conv_id:
+        return await db_utils.get_vectors_by_conversation_id(conv_id)
     return await db_utils.get_vectors()
 
 
@@ -83,9 +83,9 @@ async def get_conversations(conv_id: int = None, cat_id: int = None, cat_name: s
 
 
 @app.get("/get/categories")
-async def get_categories(category_id: int = None, name: str = None):
-    if category_id:
-        return await db_utils.get_category_by_id(category_id)
-    if name:
-        return await db_utils.get_category_by_name(name)
+async def get_categories(cat_id: int = None, cat_name: str = None):
+    if cat_id:
+        return await db_utils.get_category_by_id(cat_id)
+    if cat_name:
+        return await db_utils.get_category_by_name(cat_name)
     return await db_utils.get_categories()
