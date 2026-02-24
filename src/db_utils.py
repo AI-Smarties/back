@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from db import sessionlocal
 from models import Conversation, Vector, Category
 
@@ -55,9 +56,17 @@ async def create_category(cat_name):
     with sessionlocal.begin() as session:
         pass
 
-async def delete_category(cat_id):
+async def delete_category_by_id(cat_id):
     with sessionlocal.begin() as session:
         cat = session.get(Category, cat_id)
+        if cat:
+            session.delete(cat)
+
+async def delete_category_by_name(cat_name):
+    with sessionlocal.begin() as session:
+        cat = session.execute(
+            select(Category).where(Category.name == cat_name)
+        ).scalar_one_or_none()
         if cat:
             session.delete(cat)
 
