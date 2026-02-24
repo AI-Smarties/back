@@ -105,9 +105,12 @@ class StreamingASR:
             elif partial_text:
                 # Prefix with already-finalised text so the UI always shows the
                 # full transcript (committed + in-progress).
-                payload = {"status": "partial", "text": self.final_buffer.strip() + " " + partial_text}
+                payload = {
+                    "status": "partial", "text": self.final_buffer.strip() + " " + partial_text
+                }
             else:
                 continue
+            # pylint: disable=unspecified-encoding
             with open('./scripts/response.txt', 'a') as file:
                 file.write(str(self.final_buffer.strip() + ' ' + partial_text) + '\n')
             self._dispatch({"type": "transcript", "data": payload})

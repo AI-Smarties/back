@@ -10,7 +10,7 @@ BYTES_PER_SAMPLE = 2  # LINEAR16
 CHUNK_DURATION = 0.5  # seconds
 CHUNK_BYTES = int(SAMPLE_RATE * BYTES_PER_SAMPLE * CHUNK_DURATION)  # 3200
 
-
+# pylint: disable=consider-using-with
 async def stream(url: str, path: str):
     audio = open(path, "rb").read()
     print(f"Connecting to {url} ...")
