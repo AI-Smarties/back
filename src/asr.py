@@ -4,6 +4,8 @@ import asyncio
 from google import auth
 from google.cloud.speech_v2 import SpeechClient
 from google.cloud.speech_v2.types import cloud_speech
+from google.api_core.client_options import ClientOptions
+
 
 
 # pylint: disable=too-many-instance-attributes
@@ -17,7 +19,9 @@ class StreamingASR:
         if self.testing:
             self.client = client
         else:
-            self.client = SpeechClient()
+            self.client = SpeechClient(client_options=ClientOptions(
+                api_endpoint="eu-speech.googleapis.com",
+            ))
             self.worker = threading.Thread(target=self._worker, daemon=True)
             self.worker.start()
             self.loop = asyncio.get_running_loop()
@@ -44,7 +48,7 @@ class StreamingASR:
                 raise RuntimeError(
                     "Could not determine GCP project id from Application Default Credentials."
                 )
-            recognizer = self.client.recognizer_path(project, "global", "_")
+            recognizer = self.client.recognizer_path(project, "eu", "_")
 
             config = cloud_speech.StreamingRecognitionConfig(
                 config=cloud_speech.RecognitionConfig(
@@ -57,6 +61,7 @@ class StreamingASR:
                     features=cloud_speech.RecognitionFeatures(
                         enable_automatic_punctuation=True,
                     ),
+                    model='long'
                 ),
                 streaming_features=cloud_speech.StreamingRecognitionFeatures(
                     interim_results=True,
@@ -76,24 +81,33 @@ class StreamingASR:
 
         responses = self.client.streaming_recognize(requests=request_gen())
         for response in responses:
+            stable = "" # high stability >= 0.5
+            speculative = "" # low stability  < 0.5
             for result in response.results:
                 if not result.alternatives:
                     continue
-                text = result.alternatives[0].transcript.strip()
-                if not result.is_final:
-                    payload = {
-                        "status": "partial",
-                        "text": text
-                    }
+                if result.stability >= 0.5:
+                    stable = result.alternatives[0].transcript
                 else:
-                    if text:
-                        text = text[0].upper() + text[1:]
-                        if text[-1] not in ".!?":
-                            text += "."
-                    self.final_buffer += text + " "
-                    payload = {
-                        "status": "final",
-                        "text": self.final_buffer.strip()
-                    }
-                data = {"type": "transcript", "data": payload}
-                self._dispatch(data)
+                    speculative = result.alternatives[0].transcript
+
+            partial_text = (stable + speculative).strip()
+
+            final_result = next((r for r in response.results if r.is_final), None)
+            if final_result:
+                text = final_result.alternatives[0].transcript.strip()
+                if text:
+                    text = text[0].upper() + text[1:]
+                    if text[-1] not in ".!?":
+                        text += "."
+                self.final_buffer += text + " "
+                payload = {"status": "final", "text": self.final_buffer.strip()}
+            elif partial_text:
+                # Prefix with already-finalised text so the UI always shows the
+                # full transcript (committed + in-progress).
+                payload = {"status": "partial", "text": self.final_buffer.strip() + " " + partial_text}
+            else:
+                continue
+            with open('./scripts/response.txt', 'a') as file:
+                file.write(str(self.final_buffer.strip() + ' ' + partial_text) + '\n')
+            self._dispatch({"type": "transcript", "data": payload})
