@@ -10,21 +10,20 @@ async def create_vector(text, conv_id):
 
 async def delete_vector(vec_id):
     with sessionlocal.begin() as session:
-        vec = session.get(Vector, vec_id)
-        if vec:
-            session.delete(vec)
+        vec = session.get_one(Vector, vec_id)
+        session.delete(vec)
 
 async def get_vector_by_id(vec_id):
     with sessionlocal() as session:
-        pass
+        return session.get(Vector, vec_id)
 
 async def get_vectors_by_conversation_id(conv_id):
     with sessionlocal() as session:
-        pass
+        return session.scalars(select(Vector).where(Vector.conversation_id == conv_id)).all()
 
 async def get_vectors():
     with sessionlocal() as session:
-        pass
+        return session.scalars(select(Vector)).all()
 
 async def create_conversation(name, timestamp, summary, cat_id):
     with sessionlocal.begin() as session:
@@ -32,25 +31,26 @@ async def create_conversation(name, timestamp, summary, cat_id):
 
 async def delete_conversation(conv_id):
     with sessionlocal.begin() as session:
-        conv = session.get(Conversation, conv_id)
-        if conv:
-            session.delete(conv)
+        conv = session.get_one(Conversation, conv_id)
+        session.delete(conv)
 
 async def get_conversation_by_id(conv_id):
     with sessionlocal() as session:
-        pass
+        return session.get(Conversation, conv_id)
 
 async def get_conversations_by_category_id(cat_id):
     with sessionlocal() as session:
-        pass
+        return session.scalars(select(Conversation).where(Conversation.category_id == cat_id)).all()
 
 async def get_conversations_by_category_name(cat_name):
     with sessionlocal() as session:
-        pass
+        return session.scalars(
+            select(Conversation).join(Category).where(Category.name == cat_name)
+        ).all()
 
 async def get_conversations():
     with sessionlocal() as session:
-        pass
+        return session.scalars(select(Conversation)).all()
 
 async def create_category(cat_name):
     with sessionlocal.begin() as session:
@@ -58,26 +58,22 @@ async def create_category(cat_name):
 
 async def delete_category_by_id(cat_id):
     with sessionlocal.begin() as session:
-        cat = session.get(Category, cat_id)
-        if cat:
-            session.delete(cat)
+        cat = session.get_one(Category, cat_id)
+        session.delete(cat)
 
 async def delete_category_by_name(cat_name):
     with sessionlocal.begin() as session:
-        cat = session.execute(
-            select(Category).where(Category.name == cat_name)
-        ).scalar_one_or_none()
-        if cat:
-            session.delete(cat)
+        cat = session.scalars(select(Category).where(Category.name == cat_name)).one()
+        session.delete(cat)
 
 async def get_category_by_id(cat_id):
     with sessionlocal() as session:
-        pass
+        return session.get(Category, cat_id)
 
 async def get_category_by_name(cat_name):
     with sessionlocal() as session:
-        pass
+        return session.scalars(select(Category).where(Category.name == cat_name)).one_or_none()
 
 async def get_categories():
     with sessionlocal() as session:
-        pass
+        return session.scalars(select(Category)).all()
