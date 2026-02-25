@@ -1,6 +1,10 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from sqlalchemy import select
 from db import sessionlocal
 from models import Conversation, Vector, Category
+
+TIMEZONE = "Europe/Helsinki"
 
 # pylint: disable=no-member
 
@@ -25,9 +29,12 @@ async def get_vectors():
     with sessionlocal() as session:
         return session.scalars(select(Vector)).all()
 
-async def create_conversation(name, timestamp, summary, cat_id):
+async def create_conversation(name, summary, cat_id, timestamp=None):
+    if not timestamp:
+        timestamp = datetime.now(ZoneInfo(TIMEZONE))
+    conv = Conversation(name=name, summary=summary, category_id=cat_id, timestamp=timestamp)
     with sessionlocal.begin() as session:
-        pass
+        session.add(conv)
 
 async def delete_conversation(conv_id):
     with sessionlocal.begin() as session:
@@ -53,8 +60,9 @@ async def get_conversations():
         return session.scalars(select(Conversation)).all()
 
 async def create_category(cat_name):
+    cat = Category(name=cat_name)
     with sessionlocal.begin() as session:
-        pass
+        session.add(cat)
 
 async def delete_category_by_id(cat_id):
     with sessionlocal.begin() as session:
