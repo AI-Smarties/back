@@ -64,28 +64,59 @@ async def handle_text(text: str, ws: WebSocket):
 
 @app.get("/get/vectors")
 async def get_vectors(vec_id: int = None, conv_id: int = None):
-    if vec_id:
-        return await db_utils.get_vector_by_id(vec_id)
-    if conv_id:
-        return await db_utils.get_vectors_by_conversation_id(conv_id)
-    return await db_utils.get_vectors()
+    if vec_id is not None:
+        vec = await db_utils.get_vector_by_id(vec_id)
+        if vec is None:
+            return []
+        return [{"id": vec.id, "text": vec.text, "conversation_id": vec.conversation_id}]
+    if conv_id is not None:
+        vecs = await db_utils.get_vectors_by_conversation_id(conv_id)
+    else:
+        vecs = await db_utils.get_vectors()
+    return [{
+        "id": vec.id,
+        "text": vec.text,
+        "conversation_id": vec.conversation_id,
+        } for vec in vecs]
 
 
 @app.get("/get/conversations")
 async def get_conversations(conv_id: int = None, cat_id: int = None, cat_name: str = None):
-    if conv_id:
-        return await db_utils.get_conversation_by_id(conv_id)
-    if cat_id:
-        return await db_utils.get_conversations_by_category_id(cat_id)
-    if cat_name:
-        return await db_utils.get_conversations_by_category_name(cat_name)
-    return await db_utils.get_conversations()
+    if conv_id is not None:
+        conv = await db_utils.get_conversation_by_id(conv_id)
+        if conv is None:
+            return []
+        return [{
+            "id": conv.id,
+            "name": conv.name,
+            "summary": conv.summary,
+            "category_id": conv.category_id,
+            "timestamp": conv.timestamp.isoformat(),
+        }]
+    if cat_id is not None:
+        convs = await db_utils.get_conversations_by_category_id(cat_id)
+    elif cat_name is not None:
+        convs = await db_utils.get_conversations_by_category_name(cat_name)
+    else:
+        convs = await db_utils.get_conversations()
+    return [{
+        "id": conv.id,
+        "name": conv.name,
+        "summary": conv.summary,
+        "category_id": conv.category_id,
+        "timestamp": conv.timestamp.isoformat(),
+    } for conv in convs]
 
 
 @app.get("/get/categories")
 async def get_categories(cat_id: int = None, cat_name: str = None):
-    if cat_id:
-        return await db_utils.get_category_by_id(cat_id)
-    if cat_name:
-        return await db_utils.get_category_by_name(cat_name)
-    return await db_utils.get_categories()
+    if cat_id is not None:
+        cat = await db_utils.get_category_by_id(cat_id)
+    elif cat_name is not None:
+        cat = await db_utils.get_category_by_name(cat_name)
+    else:
+        cats = await db_utils.get_categories()
+        return [{"id": cat.id, "name": cat.name} for cat in cats]
+    if cat is None:
+        return []
+    return [{"id": cat.id, "name": cat.name}]
