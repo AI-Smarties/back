@@ -1,5 +1,6 @@
 import json
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, HTTPException
+from sqlalchemy.exc import IntegrityError
 from asr import StreamingASR
 import db_utils
 
@@ -96,6 +97,7 @@ async def get_conversations(conv_id: int = None, cat_id: int = None, cat_name: s
     if cat_id is not None:
         convs = await db_utils.get_conversations_by_category_id(cat_id)
     elif cat_name is not None:
+        cat_name = cat_name.strip()
         convs = await db_utils.get_conversations_by_category_name(cat_name)
     else:
         convs = await db_utils.get_conversations()
@@ -113,6 +115,7 @@ async def get_categories(cat_id: int = None, cat_name: str = None):
     if cat_id is not None:
         cat = await db_utils.get_category_by_id(cat_id)
     elif cat_name is not None:
+        cat_name = cat_name.strip()
         cat = await db_utils.get_category_by_name(cat_name)
     else:
         cats = await db_utils.get_categories()
@@ -120,3 +123,13 @@ async def get_categories(cat_id: int = None, cat_name: str = None):
     if cat is None:
         return []
     return [{"id": cat.id, "name": cat.name}]
+
+
+@app.post("/create/category")
+async def create_category(name: str):
+    name = name.strip()
+    try:
+        cat = await db_utils.create_category(name)
+    except IntegrityError as e:
+        raise HTTPException(409, "Category already exists") from e
+    return {"id": cat.id, "name": cat.name}

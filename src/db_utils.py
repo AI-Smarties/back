@@ -9,8 +9,10 @@ TIMEZONE = "Europe/Helsinki"
 # pylint: disable=no-member
 
 async def create_vector(text, conv_id):
+    vec = Vector()
     with sessionlocal.begin() as session:
-        pass
+        session.add(vec)
+    return vec
 
 async def delete_vector(vec_id):
     with sessionlocal.begin() as session:
@@ -35,6 +37,7 @@ async def create_conversation(name, summary, cat_id, timestamp=None):
     conv = Conversation(name=name, summary=summary, category_id=cat_id, timestamp=timestamp)
     with sessionlocal.begin() as session:
         session.add(conv)
+    return conv
 
 async def delete_conversation(conv_id):
     with sessionlocal.begin() as session:
@@ -63,6 +66,7 @@ async def create_category(cat_name):
     cat = Category(name=cat_name)
     with sessionlocal.begin() as session:
         session.add(cat)
+    return cat
 
 async def delete_category_by_id(cat_id):
     with sessionlocal.begin() as session:
