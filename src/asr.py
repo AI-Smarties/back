@@ -4,6 +4,8 @@ import asyncio
 from google import auth
 from google.cloud.speech_v2 import SpeechClient
 from google.cloud.speech_v2.types import cloud_speech
+from google.api_core.client_options import ClientOptions
+
 
 
 # pylint: disable=too-many-instance-attributes
@@ -17,7 +19,9 @@ class StreamingASR:
         if self.testing:
             self.client = client
         else:
-            self.client = SpeechClient()
+            self.client = SpeechClient(client_options=ClientOptions(
+                api_endpoint="eu-speech.googleapis.com",
+            ))
             self.worker = threading.Thread(target=self._worker, daemon=True)
             self.worker.start()
             self.loop = asyncio.get_running_loop()
@@ -44,7 +48,7 @@ class StreamingASR:
                 raise RuntimeError(
                     "Could not determine GCP project id from Application Default Credentials."
                 )
-            recognizer = self.client.recognizer_path(project, "global", "_")
+            recognizer = self.client.recognizer_path(project, "eu", "_")
 
             config = cloud_speech.StreamingRecognitionConfig(
                 config=cloud_speech.RecognitionConfig(
@@ -57,6 +61,7 @@ class StreamingASR:
                     features=cloud_speech.RecognitionFeatures(
                         enable_automatic_punctuation=True,
                     ),
+                    model='long'
                 ),
                 streaming_features=cloud_speech.StreamingRecognitionFeatures(
                     interim_results=True,
