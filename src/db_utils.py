@@ -9,7 +9,8 @@ TIMEZONE = "Europe/Helsinki"
 # pylint: disable=no-member
 
 async def create_vector(text, conv_id):
-    vec = Vector()
+    embedding = None
+    vec = Vector(text=text, conversation_id=conv_id, embedding=embedding)
     with sessionlocal.begin() as session:
         session.add(vec)
     return vec
@@ -31,7 +32,7 @@ async def get_vectors():
     with sessionlocal() as session:
         return session.scalars(select(Vector)).all()
 
-async def create_conversation(name, summary, cat_id, timestamp=None):
+async def create_conversation(name, summary, cat_id=None, timestamp=None):
     if not timestamp:
         timestamp = datetime.now(ZoneInfo(TIMEZONE))
     conv = Conversation(name=name, summary=summary, category_id=cat_id, timestamp=timestamp)

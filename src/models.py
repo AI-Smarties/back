@@ -33,12 +33,7 @@ class Conversation(Base):
     timestamp = Column(DateTime(timezone=True), nullable=False)
     name = Column(Text, nullable=False)
     summary = Column(Text, nullable=False)
-    category_id = Column(
-        Integer,
-        ForeignKey("categories.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
+    category_id = Column(Integer, ForeignKey("categories.id"), index=True)
 
     category = relationship("Category", back_populates="conversations")
     vectors = relationship(
@@ -55,9 +50,4 @@ class Category(Base):
     id = Column(Integer, primary_key=True)
     name = Column(Text, nullable=False, unique=True, index=True)
 
-    conversations = relationship(
-        "Conversation",
-        back_populates="category",
-        cascade="all, delete",
-        passive_deletes=True,
-    )
+    conversations = relationship("Conversation", back_populates="category",)
