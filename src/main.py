@@ -135,10 +135,12 @@ def create_category(name: str):
         raise HTTPException(409, "Category already exists") from e
     return {"id": cat.id, "name": cat.name}
 
+
 @app.post("/create/tables")
 def create_tables():
     db.create_tables()
     return {"message": "Tables created"}
+
 
 @app.post("/drop/tables")
 def drop_tables():
