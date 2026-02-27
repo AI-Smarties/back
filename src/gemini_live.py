@@ -14,7 +14,8 @@ CONFIG = genai.types.LiveConnectConfig(
     tools=[genai.types.Tool(function_declarations=[
         genai.types.FunctionDeclaration(
             name="keyword_detected",
-            description="Call this function when you hear the word 'cappi' or any of its Finnish inflected forms in the audio.",
+            description="Call this function when you hear the word 'cappi' or"
+                        "any of its Finnish inflected forms in the audio.",
         )
     ])],
 )
@@ -98,13 +99,18 @@ class GeminiLiveSession:
                                 print('DETECTED')
                                 await self.ws.send_json({"type": "ai", "data": "true"})
                             await session.send_tool_response(function_responses=[
-                                genai.types.FunctionResponse(id=fc.id, name=fc.name, response={"result": "ok"})
+                                genai.types.FunctionResponse(
+                                    id=fc.id,
+                                    name=fc.name,
+                                    response={"result": "ok"}
+                                )
                             ])
                     server_content = response.server_content
                     if not server_content:
                         continue
                     # accumulate input transcription chunks
-                    if server_content.input_transcription and server_content.input_transcription.text:
+                    if server_content.input_transcription and \
+                        server_content.input_transcription.text:
                         input_buf.append(server_content.input_transcription.text)
                     # on turn end: flush buffered transcript as one message
                     if server_content.turn_complete and input_buf:
