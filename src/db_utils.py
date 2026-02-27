@@ -8,15 +8,20 @@ from db import sessionlocal
 from models import Conversation, Vector, Category, EMBEDDING_DIMENSIONS
 
 TIMEZONE = "Europe/Helsinki"
+EMBEDDING_MODEL = None
 
-_, project = google.auth.default()
-vertexai.init(project=project, location="europe-north1")
-embedding_model = TextEmbeddingModel.from_pretrained("text-multilingual-embedding-002")
+def load_embedding_model():
+    global EMBEDDING_MODEL  # pylint: disable=global-statement
+    _, project = google.auth.default()
+    vertexai.init(project=project, location="europe-north1")
+    EMBEDDING_MODEL = TextEmbeddingModel.from_pretrained("text-multilingual-embedding-002")
 
 # pylint: disable=no-member
 
 async def create_vector(text, conv_id):
-    embedding = (await embedding_model.get_embeddings_async(
+    if not EMBEDDING_MODEL:
+        load_embedding_model()
+    embedding = (await EMBEDDING_MODEL.get_embeddings_async(
         [text],
         output_dimensionality=EMBEDDING_DIMENSIONS,
     ))[0].values
@@ -43,7 +48,9 @@ async def get_vectors():
         return session.scalars(select(Vector)).all()
 
 async def search_vectors(text, limit=1):
-    embedding = (await embedding_model.get_embeddings_async(
+    if not EMBEDDING_MODEL:
+        load_embedding_model()
+    embedding = (await EMBEDDING_MODEL.get_embeddings_async(
         [text],
         output_dimensionality=EMBEDDING_DIMENSIONS,
     ))[0].values
