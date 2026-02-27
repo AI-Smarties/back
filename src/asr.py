@@ -8,8 +8,7 @@ from google.api_core.client_options import ClientOptions
 
 
 
-# pylint: disable=too-many-instance-attributes
-class StreamingASR:
+class StreamingASR:  # pylint: disable=too-many-instance-attributes
     def __init__(self, ws, testing=False, client=None):
         self.ws = ws
         self.testing = testing
