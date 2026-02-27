@@ -1,12 +1,12 @@
 import json
-from fastapi import FastAPI, WebSocket
-from gemini_live import GeminiLiveSession
 from fastapi import FastAPI, WebSocket, HTTPException
 from sqlalchemy.exc import IntegrityError
+from gemini_live import GeminiLiveSession
 import db_utils
 import db
 
 
+# pylint: disable=invalid-name global-statement
 app = FastAPI()
 geminiLive = None
 
