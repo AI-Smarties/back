@@ -16,3 +16,9 @@ engine = create_engine(DB_URL)
 sessionlocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
+
+def create_tables():
+    Base.metadata.create_all(engine)
+
+def drop_tables():
+    Base.metadata.drop_all(engine)

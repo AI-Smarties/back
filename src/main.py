@@ -3,6 +3,7 @@ from fastapi import FastAPI, WebSocket, HTTPException
 from sqlalchemy.exc import IntegrityError
 from asr import StreamingASR
 import db_utils
+import db
 
 
 app = FastAPI()
@@ -133,3 +134,13 @@ def create_category(name: str):
     except IntegrityError as e:
         raise HTTPException(409, "Category already exists") from e
     return {"id": cat.id, "name": cat.name}
+
+@app.post("/create/tables")
+def create_tables():
+    db.create_tables()
+    return {"message": "Tables created"}
+
+@app.post("/drop/tables")
+def drop_tables():
+    db.drop_tables()
+    return {"message": "Tables dropped"}
