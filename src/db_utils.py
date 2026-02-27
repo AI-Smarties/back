@@ -1,15 +1,25 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import vertexai
+from vertexai.language_models import TextEmbeddingModel
+import google
 from sqlalchemy import select
 from db import sessionlocal
-from models import Conversation, Vector, Category
+from models import Conversation, Vector, Category, EMBEDDING_DIMENSIONS
 
 TIMEZONE = "Europe/Helsinki"
+
+_, project = google.auth.default()
+vertexai.init(project=project, location="europe-north1")
+embedding_model = TextEmbeddingModel.from_pretrained("text-multilingual-embedding-002")
 
 # pylint: disable=no-member
 
 async def create_vector(text, conv_id):
-    embedding = None
+    embedding = (await embedding_model.get_embeddings_async(
+        [text],
+        output_dimensionality=EMBEDDING_DIMENSIONS,
+    ))[0].values
     vec = Vector(text=text, conversation_id=conv_id, embedding=embedding)
     with sessionlocal.begin() as session:
         session.add(vec)
@@ -31,6 +41,16 @@ async def get_vectors_by_conversation_id(conv_id):
 async def get_vectors():
     with sessionlocal() as session:
         return session.scalars(select(Vector)).all()
+
+async def search_vectors(text, limit=1):
+    embedding = (await embedding_model.get_embeddings_async(
+        [text],
+        output_dimensionality=EMBEDDING_DIMENSIONS,
+    ))[0].values
+    with sessionlocal() as session:
+        return session.scalars(
+            select(Vector).order_by(Vector.embedding.cosine_distance(embedding)).limit(limit)
+        ).all()
 
 async def create_conversation(name, summary, cat_id=None, timestamp=None):
     if not timestamp:
