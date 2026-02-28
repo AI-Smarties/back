@@ -23,12 +23,7 @@ async def stream(url: str, path: str):
             try:
                 async for raw in ws:
                     msg = json.loads(raw)
-                    if msg.get("type") == "transcript":
-                        d = msg["data"]
-                        tag = "[partial]" if d["status"] == "partial" else "[FINAL]  "
-                        print(f"\r{tag} {d['text']}", end="", flush=True)
-                        if d["status"] == "final":
-                            print()
+                    print(f"\r[WS MSG] {msg}", flush=True)
             except websockets.exceptions.ConnectionClosed:
                 pass
 
@@ -45,7 +40,7 @@ async def stream(url: str, path: str):
             await asyncio.sleep(CHUNK_DURATION)
 
         await ws.send(json.dumps({"type": "control", "cmd": "stop"})) ## stop asr
-        await asyncio.sleep(2.0)
+        await asyncio.sleep(5.0)
 
 
 if __name__ == "__main__":
