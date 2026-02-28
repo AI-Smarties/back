@@ -13,7 +13,7 @@ DB_URL += f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
 engine = create_engine(DB_URL)
 
-sessionlocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+sessionlocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, expire_on_commit=False)
 
 Base = declarative_base()
 
