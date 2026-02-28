@@ -17,12 +17,13 @@ class StubClient:
     def streaming_recognize(self, requests):  # pylint: disable=unused-argument
         return iter(self._responses)
 
-def resp(transcript: str, is_final: bool):
+def resp(transcript: str, is_final: bool, stability: float = 0.9):
     return SimpleNamespace(
         results=[
             SimpleNamespace(
                 alternatives=[SimpleNamespace(transcript=transcript)],
                 is_final=is_final,
+                stability=stability,
             )
         ]
     )
@@ -35,7 +36,7 @@ def test_worker_emits_correct_json_and_applies_punctuation():
     ])
     asr = StreamingASR(ws, testing=True, client=client)
     asr._worker()  # pylint: disable=protected-access
-    assert ws.sent[0] == {"type": "transcript", "data": {"status": "partial", "text": "hello"}}
+    assert ws.sent[0] == {"type": "transcript", "data": {"status": "partial", "text": " hello"}}
     assert ws.sent[1] == {"type": "transcript", "data": {"status": "final", "text": "Hello."}}
 
 def test_worker_accumulates_final_buffer_and_preserves_punctuation():
