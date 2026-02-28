@@ -1,23 +1,35 @@
 import asyncio
 from google import genai
+from gemini_tools import fetch_information
 
 MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
-SYSTEM_INSTRUCTION = """You are a Finnish keyword spotter. Listen to the audio.
-When you hear the word "cappi" or any inflected form (capin, capille, capilla, cappiin, capissa, cappia), call the keyword_detected function immediately.
-Do not speak. Do not generate audio. Only call the function when you hear "cappi"."""
+SYSTEM_INSTRUCTION = """You are a Finnish memory manager. Listen to the audio.
+Do not speak. Do not generate audio. Upon any new topic the user mentions, use the fetch_information tool.
+"""
 
 
 CONFIG = genai.types.LiveConnectConfig(
     response_modalities=["AUDIO"],
     input_audio_transcription=genai.types.AudioTranscriptionConfig(),
     system_instruction=SYSTEM_INSTRUCTION,
-    tools=[genai.types.Tool(function_declarations=[
-        genai.types.FunctionDeclaration(
-            name="keyword_detected",
-            description="Call this function when you hear the word 'cappi' or"
-                        "any of its Finnish inflected forms in the audio.",
-        )
-    ])],
+    tools=[
+        genai.types.Tool(function_declarations=[
+            genai.types.FunctionDeclaration(
+                name="fetch_information",
+                description="Fetch useful information based on a text query from vector database. (max 1 sentence)",
+                parameters={
+                    "type":         "object",
+                    "properties":   {
+                        "query": {
+                            "type":         "string",
+                            "description":  "The text query to search for information"
+                        }
+                    },
+                    "required":     ["query"]
+                }
+            )
+        ]),
+    ]
 )
 
 class GeminiLiveSession:
@@ -91,20 +103,19 @@ class GeminiLiveSession:
                     if response.usage_metadata:
                         self.tokens_used += response.usage_metadata.total_token_count or 0
                         print(f"tokens: {self.tokens_used}")
-                    # function call = keyword detected
+
                     if response.tool_call:
                         for fc in response.tool_call.function_calls:
+                            tool_result = None
                             print(f"tool call: {fc.name}")
-                            if fc.name == "keyword_detected":
-                                print('DETECTED')
-                                await self.ws.send_json({"type": "ai", "data": "true"})
-                            await session.send_tool_response(function_responses=[
-                                genai.types.FunctionResponse(
-                                    id=fc.id,
-                                    name=fc.name,
-                                    response={"result": "ok"}
-                                )
-                            ])
+
+                            if fc.name == "fetch_information":
+                                query = fc.args.get("query", "")
+                                print(f"fetching information for query: {query!r}")
+                                tool_result = fetch_information(query)
+                                print(f"fetch result: {tool_result}")
+                                await self.ws.send_json({"type": "ai", "data": tool_result["information"]})
+
                     server_content = response.server_content
                     if not server_content:
                         continue
