@@ -15,6 +15,8 @@ def save_information(information:str, conversation_id:int) -> dict:
     Returns:
         A dictionary with the status of the save operation
     """
+    if not information or information == "":
+        return {"status": "error", "message": "Information cannot be empty."}
     try:
         create_vector(information, conversation_id)
         return {"status": "success", "message": f"Information saved: {information}"}
@@ -32,6 +34,8 @@ def fetch_information(query: str) -> dict:
     Returns:
         A dictionary with the retrieved information or error message
     """
+    if not query or query == "":
+        return {"status": "error", "message": "Query cannot be empty."}
     try:
         results = search_vectors(query, limit=1)
         if results:
