@@ -2,9 +2,10 @@
 Tool functions for Gemini Live API.
 These functions can be called by Gemini as tool calls.
 """
+from db_utils import search_vectors, create_vector
 
 
-def save_information(information:str) -> dict:
+def save_information(information:str, conversation_id:int) -> dict:
     """
     Save information to vector database.
 
@@ -14,8 +15,11 @@ def save_information(information:str) -> dict:
     Returns:
         A dictionary with the status of the save operation
     """
-    # Placeholder implementation
-    return {"status": "success", "message": f"Information saved: {information}"}
+    try:
+        create_vector(information, conversation_id)
+        return {"status": "success", "message": f"Information saved: {information}"}
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to save information: {e}"}
 
 
 def fetch_information(query: str) -> dict:
@@ -28,10 +32,11 @@ def fetch_information(query: str) -> dict:
     Returns:
         A dictionary with the retrieved information or error message
     """
-    # Placeholder implementation
-    print(f"[PLACEHOLDER] Fetching information for query: {query}")
-    return {
-        "status": "success",
-        "query": query,
-        "data": "Placeholder response; no actual data retrieved yet"
-    }
+    try:
+        results = search_vectors(query, limit=1)
+        if results:
+            return {"status": "success", "information": results[0].text}
+        else:
+            return {"status": "success", "information": "No relevant information found."}
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to fetch information: {e}"}
