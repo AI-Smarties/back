@@ -5,6 +5,7 @@ These functions can be called by Gemini as tool calls.
 from db_utils import search_vectors, create_vector
 
 
+# pylint: disable=broad-exception-caught
 def save_information(information:str, conversation_id:int) -> dict:
     """
     Save information to vector database.
@@ -40,7 +41,6 @@ def fetch_information(query: str) -> dict:
         results = search_vectors(query, limit=1)
         if results:
             return {"status": "success", "information": results[0].text}
-        else:
-            return {"status": "success", "information": "No relevant information found."}
+        return {"status": "success", "information": "No relevant information found."}
     except Exception as e:
         return {"status": "error", "message": f"Failed to fetch information: {e}"}

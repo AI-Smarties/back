@@ -16,7 +16,8 @@ CONFIG = genai.types.LiveConnectConfig(
         genai.types.Tool(function_declarations=[
             genai.types.FunctionDeclaration(
                 name="fetch_information",
-                description="Fetch useful information based on a text query from vector database. (max 1 sentence)",
+                description="Fetch useful information based on a text query "
+                            "from vector database. (max 1 sentence)",
                 parameters={
                     "type":         "object",
                     "properties":   {
@@ -114,7 +115,9 @@ class GeminiLiveSession:
                                 print(f"fetching information for query: {query!r}")
                                 tool_result = fetch_information(query)
                                 print(f"fetch result: {tool_result}")
-                                await self.ws.send_json({"type": "ai", "data": tool_result["information"]})
+                                await self.ws.send_json(
+                                    {"type": "ai", "data": tool_result["information"]}
+                                )
 
                     server_content = response.server_content
                     if not server_content:

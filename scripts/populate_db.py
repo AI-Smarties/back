@@ -14,12 +14,11 @@ from zoneinfo import ZoneInfo
 src_path = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
-# pylint: disable=wrong-import-position,import-error
+# pylint: disable=duplicate-code,wrong-import-position,import-error
 from db_utils import (
     create_category,
     create_conversation,
     create_vector,
-    get_category_by_name,
     get_categories,
     get_conversations,
     get_vectors,
