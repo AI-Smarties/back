@@ -24,7 +24,7 @@ from db_utils import (
     get_conversations,
     get_vectors,
 )
-from db import create_tables
+from db import create_tables, drop_tables
 
 TIMEZONE = "Europe/Helsinki"
 
@@ -43,15 +43,9 @@ def populate_categories():
 
     created_ids = {}
     for cat_name in categories:
-        # Check if category already exists
-        existing = get_category_by_name(cat_name)
-        if existing:
-            print(f"  Category '{cat_name}' already exists (ID: {existing.id})")
-            created_ids[cat_name] = existing.id
-        else:
-            cat_id = create_category(cat_name)
-            print(f"  Created category '{cat_name}' (ID: {cat_id})")
-            created_ids[cat_name] = cat_id
+        cat = create_category(cat_name)
+        print(f"  Created category '{cat_name}' (ID: {cat.id})")
+        created_ids[cat_name] = cat.id
 
     return created_ids
 
@@ -160,20 +154,21 @@ def populate_conversations(category_ids):
     created_conv_ids = []
     for conv_data in conversations_data:
         cat_id = category_ids.get(conv_data["category"])
-        conv_id = create_conversation(
+        conv = create_conversation(
             name=conv_data["name"],
             summary=conv_data["summary"],
             cat_id=cat_id,
             timestamp=conv_data["timestamp"],
         )
-        print(f"  Created conversation '{conv_data['name']}' (ID: {conv_id})")
+        print(f"  Created conversation '{conv_data['name']}' (ID: {conv.id})")
 
         # Create vectors for this conversation
         for vector_text in conv_data["vectors"]:
-            vec_id = create_vector(vector_text, conv_id)
-            print(f"    Created vector (ID: {vec_id})")
+            information = f"Konteksti: {conv_data['name']}; Sisältö: {vector_text}"
+            vec = create_vector(information, conv.id)
+            print(f"    Created vector (ID: {vec.id})")
 
-        created_conv_ids.append(conv_id)
+        created_conv_ids.append(conv.id)
 
     return created_conv_ids
 
@@ -186,14 +181,9 @@ def print_database_summary():
 
     categories = get_categories()
     print(f"\nTotal Categories: {len(categories)}")
-    for cat in categories:
-        print(f"  - {cat.name} (ID: {cat.id})")
 
     conversations = get_conversations()
     print(f"\nTotal Conversations: {len(conversations)}")
-    for conv in conversations:
-        category_name = conv.category.name if conv.category else "None"
-        print(f"  - {conv.name} (ID: {conv.id}, Category: {category_name})")
 
     vectors = get_vectors()
     print(f"\nTotal Vectors: {len(vectors)}")
@@ -205,11 +195,6 @@ def main():
     """Main function to populate the database."""
     print("Starting database population...")
     print("=" * 60)
-
-    # Ensure tables exist
-    print("\nEnsuring database tables exist...")
-    create_tables()
-    print("Tables ready.")
 
     try:
         # Create categories
@@ -229,4 +214,6 @@ def main():
 
 
 if __name__ == "__main__":
+    drop_tables()
+    create_tables()
     main()
