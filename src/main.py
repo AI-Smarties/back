@@ -13,7 +13,6 @@ gemini_live = None
 
 @app.websocket("/ws/")
 async def audio_ws(ws: WebSocket):
-    global gemini_live
     await ws.accept()
     await ws.send_json({"type": "control", "cmd": "ready"})
     try:
@@ -31,13 +30,10 @@ async def audio_ws(ws: WebSocket):
                 elif "text" in msg:  # kaikki muu kuin audio tulee tekstinä
                     await handle_text(msg["text"], ws)
     finally:
-        if gemini_live:
-            await gemini_live.stop()
-            gemini_live = None
+        await stop_gemini_live()
 
 
 async def handle_text(text: str, ws: WebSocket):
-    global gemini_live
     try:
         payload = json.loads(text)
     except json.JSONDecodeError:
@@ -55,16 +51,9 @@ async def handle_text(text: str, ws: WebSocket):
             return
         cmd = payload["cmd"]
         if cmd == "start":
-            print("Starting Gemini Live")
-            if gemini_live:
-                await gemini_live.stop()
-            gemini_live = GeminiLiveSession(ws)
-            await gemini_live.start()
+            await start_gemini_live(ws)
         elif cmd == "stop":
-            print("Stopping Gemini Live")
-            if gemini_live:
-                await gemini_live.stop()
-            gemini_live = None
+            await stop_gemini_live()
         else:
             await ws.send_json({"type": "error", "message": "Unknown command"})
             print(f"Unknown command: {cmd}")
@@ -73,6 +62,23 @@ async def handle_text(text: str, ws: WebSocket):
         await ws.send_json({"type": "error", "message": "Unknown message type"})
         print(f"Unknown message type: {payload['type']}")
         return
+
+
+async def start_gemini_live(ws: WebSocket):
+    global gemini_live
+    print("Starting Gemini Live")
+    if gemini_live:
+        await gemini_live.stop()
+    gemini_live = GeminiLiveSession(ws)
+    await gemini_live.start()
+
+
+async def stop_gemini_live():
+    global gemini_live
+    print("Stopping Gemini Live")
+    if gemini_live:
+        await gemini_live.stop()
+    gemini_live = None
 
 
 @app.get("/get/vectors")
