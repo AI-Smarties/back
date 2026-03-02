@@ -1,40 +1,25 @@
 from types import SimpleNamespace
 import pytest
-from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, OperationalError, NoResultFound
 import db
 import db_utils
 
 
-def is_postgres_available():
-    try:
-        with db.sessionlocal() as session:
-            session.execute(text("SELECT 1"))
-        return True
-    except OperationalError:
-        return False
-
-
 @pytest.fixture(scope="module", autouse=True)
-def ensure_db_schema():
-    if not is_postgres_available():
+def ensure_database_availability():
+    try:
+        db.drop_tables()
+    except OperationalError:
         pytest.skip(
-            "Postgres is not available (expected at localhost:5432). "
+            "Database is not available (expected at localhost:5432). "
             "Run `docker compose up -d` to enable DB tests."
         )
-    db.drop_tables()
-    db.create_tables()
 
 
 @pytest.fixture(autouse=True)
 def clean_tables():
-    with db.sessionlocal.begin() as session:  # pylint: disable=no-member
-        session.execute(
-            text(
-                "TRUNCATE TABLE vectors, conversations, categories "
-                "RESTART IDENTITY CASCADE"
-            )
-        )
+    db.drop_tables()
+    db.create_tables()
 
 
 def test_categories():
