@@ -17,7 +17,7 @@ async def stream(url: str, path: str):
 
     async with websockets.connect(url) as ws:
         await ws.recv()  # ready
-        await ws.send(json.dumps({"type": "control", "cmd": "start"})) # start asr
+        await ws.send_json({"type": "control", "cmd": "start"}) # start asr
 
         async def recv_loop(): # receive events from ws
             try:
@@ -39,7 +39,7 @@ async def stream(url: str, path: str):
             print(f"\rStreaming... {progress:.0f}% {elapsed:.2f}s", end="", flush=True)
             await asyncio.sleep(CHUNK_DURATION)
 
-        await ws.send(json.dumps({"type": "control", "cmd": "stop"})) ## stop asr
+        await ws.send_json({"type": "control", "cmd": "stop"}) ## stop asr
         await asyncio.sleep(5.0)
 
 
