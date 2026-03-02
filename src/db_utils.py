@@ -59,7 +59,7 @@ def search_vectors(text, limit=1):
             select(Vector).order_by(Vector.embedding.cosine_distance(embedding)).limit(limit)
         ).all()
 
-def create_conversation(name, summary, cat_id=None, timestamp=None):
+def create_conversation(name, summary=None, cat_id=None, timestamp=None):
     if not timestamp:
         timestamp = datetime.now(ZoneInfo(TIMEZONE))
     conv = Conversation(name=name, summary=summary, category_id=cat_id, timestamp=timestamp)
