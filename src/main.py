@@ -24,8 +24,8 @@ async def audio_ws(ws: WebSocket):
             if msg["type"] == "websocket.receive":
                 if "bytes" in msg:  # audio tulee binäärinä
                     if not gemini_live:
-                        await ws.send_json({"type": "error", "message": "ASR not started"})
-                        print("Received audio chunk but ASR not started")
+                        await ws.send_json({"type": "error", "message": "Gemini Live not started"})
+                        print("Received audio chunk but Gemini Live not started")
                         continue
                     gemini_live.push_audio(msg["bytes"])
                 elif "text" in msg:  # kaikki muu kuin audio tulee tekstinä
@@ -55,13 +55,13 @@ async def handle_text(text: str, ws: WebSocket):
             return
         cmd = payload["cmd"]
         if cmd == "start":
-            print('start asr')
+            print("Starting Gemini Live")
             if gemini_live:
                 await gemini_live.stop()
             gemini_live = GeminiLiveSession(ws)
             await gemini_live.start()
         elif cmd == "stop":
-            print('stop asr')
+            print("Stopping Gemini Live")
             if gemini_live:
                 await gemini_live.stop()
             gemini_live = None
