@@ -49,10 +49,10 @@ def test_server_handles_missing_command():
         assert data["type"] == "error"
         assert data["message"] == "Missing command in control message"
 
-def test_server_handles_audio_before_asr():
+def test_server_handles_audio_before_start():
     with client.websocket_connect("/ws/") as websocket:
         websocket.receive_json()  # ready signal
         websocket.send_bytes(b"audio chunk")
         data = websocket.receive_json()
         assert data["type"] == "error"
-        assert data["message"] == "ASR not started"
+        assert data["message"] == "Gemini Live not started"
