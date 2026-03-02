@@ -28,7 +28,7 @@ def create_vector(text, conv_id):
     vec = Vector(text=text, conversation_id=conv_id, embedding=embedding)
     with sessionlocal.begin() as session:
         session.add(vec)
-    return vec
+        return vec
 
 def delete_vector(vec_id):
     with sessionlocal.begin() as session:
@@ -65,7 +65,7 @@ def create_conversation(name, summary, cat_id=None, timestamp=None):
     conv = Conversation(name=name, summary=summary, category_id=cat_id, timestamp=timestamp)
     with sessionlocal.begin() as session:
         session.add(conv)
-    return conv
+        return conv
 
 def delete_conversation(conv_id):
     with sessionlocal.begin() as session:
@@ -94,7 +94,7 @@ def create_category(cat_name):
     cat = Category(name=cat_name)
     with sessionlocal.begin() as session:
         session.add(cat)
-    return cat
+        return cat
 
 def delete_category_by_id(cat_id):
     with sessionlocal.begin() as session:
