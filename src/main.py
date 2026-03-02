@@ -8,12 +8,12 @@ import db
 
 # pylint: disable=invalid-name global-statement
 app = FastAPI()
-geminiLive = None
+gemini_live = None
 
 
 @app.websocket("/ws/")
 async def audio_ws(ws: WebSocket):
-    global geminiLive
+    global gemini_live
     await ws.accept()
     await ws.send_json({"type": "control", "cmd": "ready"})
     try:
@@ -23,21 +23,21 @@ async def audio_ws(ws: WebSocket):
                 break
             if msg["type"] == "websocket.receive":
                 if "bytes" in msg:  # audio tulee binäärinä
-                    if not geminiLive:
+                    if not gemini_live:
                         await ws.send_json({"type": "error", "message": "ASR not started"})
                         print("Received audio chunk but ASR not started")
                         continue
-                    geminiLive.push_audio(msg["bytes"])
+                    gemini_live.push_audio(msg["bytes"])
                 elif "text" in msg:  # kaikki muu kuin audio tulee tekstinä
                     await handle_text(msg["text"], ws)
     finally:
-        if geminiLive:
-            await geminiLive.stop()
-            geminiLive = None
+        if gemini_live:
+            await gemini_live.stop()
+            gemini_live = None
 
 
 async def handle_text(text: str, ws: WebSocket):
-    global geminiLive
+    global gemini_live
     try:
         payload = json.loads(text)
     except json.JSONDecodeError:
@@ -56,15 +56,15 @@ async def handle_text(text: str, ws: WebSocket):
         cmd = payload["cmd"]
         if cmd == "start":
             print('start asr')
-            if geminiLive:
-                await geminiLive.stop()
-            geminiLive = GeminiLiveSession(ws)
-            await geminiLive.start()
+            if gemini_live:
+                await gemini_live.stop()
+            gemini_live = GeminiLiveSession(ws)
+            await gemini_live.start()
         elif cmd == "stop":
             print('stop asr')
-            if geminiLive:
-                await geminiLive.stop()
-            geminiLive = None
+            if gemini_live:
+                await gemini_live.stop()
+            gemini_live = None
         else:
             await ws.send_json({"type": "error", "message": "Unknown command"})
             print(f"Unknown command: {cmd}")
