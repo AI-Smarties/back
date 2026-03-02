@@ -84,7 +84,7 @@ def get_vectors(vec_id: int = None, conv_id: int = None):
 
 
 @app.get("/get/conversations")
-def get_conversations(conv_id: int = None, cat_id: int = None, cat_name: str = None):
+def get_conversations(conv_id: int = None, cat_id: int = None):
     if conv_id is not None:
         conv = db_utils.get_conversation_by_id(conv_id)
         if conv is None:
@@ -98,9 +98,6 @@ def get_conversations(conv_id: int = None, cat_id: int = None, cat_name: str = N
         }]
     if cat_id is not None:
         convs = db_utils.get_conversations_by_category_id(cat_id)
-    elif cat_name is not None:
-        cat_name = cat_name.strip()
-        convs = db_utils.get_conversations_by_category_name(cat_name)
     else:
         convs = db_utils.get_conversations()
     return [{
