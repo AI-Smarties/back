@@ -46,17 +46,18 @@ async def handle_text(text: str, ws: WebSocket):
             await ws.send_json({"type": "error", "message": "Missing command in control message"})
             print(f"Missing command in control message: {payload}")
             return
-        if payload["cmd"] == "start":
+        cmd = payload["cmd"]
+        if cmd == "start":
             if asr:
                 asr.stop()
             asr = StreamingASR(ws)
-        elif payload["cmd"] == "stop":
+        elif cmd == "stop":
             if asr:
                 asr.stop()
             asr = None
         else:
             await ws.send_json({"type": "error", "message": "Unknown command"})
-            print(f"Unknown command: {payload['cmd']}")
+            print(f"Unknown command: {cmd}")
             return
     else:
         await ws.send_json({"type": "error", "message": "Unknown message type"})
