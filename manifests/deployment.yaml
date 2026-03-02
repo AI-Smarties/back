@@ -26,8 +26,6 @@ spec:
           envFrom:
             - configMapRef:
                 name: g1-smart-glasses-config
-            - secretRef:
-                name: g1-smart-glasses-secret
           volumeMounts:
             - name: gcp-secret
               mountPath: /app/secrets/gcp
