@@ -1,6 +1,9 @@
-import pytest
 from unittest.mock import Mock, AsyncMock
+import pytest
 from gemini_live import GeminiLiveSession, MODEL
+
+
+# pylint: disable=protected-access
 
 
 class TestGeminiLiveSession:
@@ -48,7 +51,7 @@ class TestGeminiLiveSession:
         assert item is None
 
 
-class TestConfig:
+class TestConfig:  # pylint: disable=too-few-public-methods
     """Test cases for Gemini Live configuration"""
 
     def test_model_constant(self):
