@@ -28,7 +28,7 @@ def create_vector(text, conv_id):
     vec = Vector(text=text, conversation_id=conv_id, embedding=embedding)
     with sessionlocal.begin() as session:
         session.add(vec)
-    return vec
+        return vec
 
 def delete_vector(vec_id):
     with sessionlocal.begin() as session:
@@ -59,13 +59,27 @@ def search_vectors(text, limit=1):
             select(Vector).order_by(Vector.embedding.cosine_distance(embedding)).limit(limit)
         ).all()
 
-def create_conversation(name, summary, cat_id=None, timestamp=None):
+def create_conversation(name, summary=None, cat_id=None, timestamp=None):
     if not timestamp:
         timestamp = datetime.now(ZoneInfo(TIMEZONE))
     conv = Conversation(name=name, summary=summary, category_id=cat_id, timestamp=timestamp)
     with sessionlocal.begin() as session:
         session.add(conv)
-    return conv
+        return conv
+
+def update_conversation_summary(conv_id, summary):
+    with sessionlocal.begin() as session:
+        conv = session.get_one(Conversation, conv_id)
+        conv.summary = summary
+        session.add(conv)
+        return conv
+
+def update_conversation_category(conv_id, cat_id):
+    with sessionlocal.begin() as session:
+        conv = session.get_one(Conversation, conv_id)
+        conv.category_id = cat_id
+        session.add(conv)
+        return conv
 
 def delete_conversation(conv_id):
     with sessionlocal.begin() as session:
@@ -80,12 +94,6 @@ def get_conversations_by_category_id(cat_id):
     with sessionlocal() as session:
         return session.scalars(select(Conversation).where(Conversation.category_id == cat_id)).all()
 
-def get_conversations_by_category_name(cat_name):
-    with sessionlocal() as session:
-        return session.scalars(
-            select(Conversation).join(Category).where(Category.name == cat_name)
-        ).all()
-
 def get_conversations():
     with sessionlocal() as session:
         return session.scalars(select(Conversation)).all()
@@ -94,7 +102,7 @@ def create_category(cat_name):
     cat = Category(name=cat_name)
     with sessionlocal.begin() as session:
         session.add(cat)
-    return cat
+        return cat
 
 def delete_category_by_id(cat_id):
     with sessionlocal.begin() as session:

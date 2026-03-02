@@ -32,7 +32,7 @@ class Conversation(Base):
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime(timezone=True), nullable=False)
     name = Column(Text, nullable=False)
-    summary = Column(Text, nullable=False)
+    summary = Column(Text)
     category_id = Column(Integer, ForeignKey("categories.id"), index=True)
 
     category = relationship("Category", back_populates="conversations")
