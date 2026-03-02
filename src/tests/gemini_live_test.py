@@ -1,0 +1,59 @@
+from unittest.mock import Mock, AsyncMock
+import pytest
+from gemini_live import GeminiLiveSession, MODEL
+
+
+# pylint: disable=protected-access
+
+
+class TestGeminiLiveSession:
+    """Test cases for GeminiLiveSession class"""
+
+    @pytest.fixture
+    def mock_websocket(self):
+        """Create a mock websocket"""
+        ws = Mock()
+        ws.send_json = AsyncMock()
+        return ws
+
+    @pytest.fixture
+    def session(self, mock_websocket):
+        """Create a GeminiLiveSession instance"""
+        return GeminiLiveSession(mock_websocket)
+
+    def test_session_initialization(self, session, mock_websocket):
+        """Test that session initializes correctly"""
+        assert session.ws == mock_websocket
+        assert session.tokens_used == 0
+        assert session._task is None
+        assert session._audio_queue.maxsize == 10
+
+    def test_push_audio_adds_to_queue(self, session):
+        """Test that audio chunks are added to the queue"""
+        audio_chunk = b"test audio data"
+        session.push_audio(audio_chunk)
+        assert session._audio_queue.qsize() == 1
+
+    def test_push_audio_ignores_when_queue_full(self, session):
+        """Test that audio is silently dropped when queue is full"""
+        # Fill the queue
+        for _ in range(10):
+            session.push_audio(b"data")
+        # Try to add one more
+        session.push_audio(b"extra")
+        assert session._audio_queue.qsize() == 10
+
+    @pytest.mark.asyncio
+    async def test_stop_adds_none_to_queue(self, session):
+        """Test that stop adds None to queue to signal termination"""
+        await session.stop()
+        item = await session._audio_queue.get()
+        assert item is None
+
+
+class TestConfig:  # pylint: disable=too-few-public-methods
+    """Test cases for Gemini Live configuration"""
+
+    def test_model_constant(self):
+        """Test that MODEL constant is set correctly"""
+        assert MODEL == "gemini-2.5-flash-native-audio-preview-12-2025"

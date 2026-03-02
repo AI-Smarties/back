@@ -1,36 +1,39 @@
 import json
 from fastapi import FastAPI, WebSocket, HTTPException
 from sqlalchemy.exc import IntegrityError
-from asr import StreamingASR
+from gemini_live import GeminiLiveSession
 import db_utils
 import db
 
 
+# pylint: disable=invalid-name global-statement
 app = FastAPI()
-asr = None  # pylint: disable=invalid-name
+gemini_live = None
 
 
 @app.websocket("/ws/")
 async def audio_ws(ws: WebSocket):
     await ws.accept()
     await ws.send_json({"type": "control", "cmd": "ready"})
-    while True:
-        msg = await ws.receive()
-        if msg["type"] == "websocket.disconnect":
-            break
-        if msg["type"] == "websocket.receive":
-            if "bytes" in msg:  # audio tulee binäärinä
-                if not asr:
-                    await ws.send_json({"type": "error", "message": "ASR not started"})
-                    print("Received audio chunk but ASR not started")
-                    continue
-                asr.push_audio(msg["bytes"])
-            elif "text" in msg:  # kaikki muu kuin audio tulee tekstinä
-                await handle_text(msg["text"], ws)
+    try:
+        while True:
+            msg = await ws.receive()
+            if msg["type"] == "websocket.disconnect":
+                break
+            if msg["type"] == "websocket.receive":
+                if "bytes" in msg:  # audio tulee binäärinä
+                    if not gemini_live:
+                        await ws.send_json({"type": "error", "message": "Gemini Live not started"})
+                        print("Received audio chunk but Gemini Live not started")
+                        continue
+                    gemini_live.push_audio(msg["bytes"])
+                elif "text" in msg:  # kaikki muu kuin audio tulee tekstinä
+                    await handle_text(msg["text"], ws)
+    finally:
+        await stop_gemini_live()
 
 
 async def handle_text(text: str, ws: WebSocket):
-    global asr  # pylint: disable=global-statement
     try:
         payload = json.loads(text)
     except json.JSONDecodeError:
@@ -48,13 +51,9 @@ async def handle_text(text: str, ws: WebSocket):
             return
         cmd = payload["cmd"]
         if cmd == "start":
-            if asr:
-                asr.stop()
-            asr = StreamingASR(ws)
+            await start_gemini_live(ws)
         elif cmd == "stop":
-            if asr:
-                asr.stop()
-            asr = None
+            await stop_gemini_live()
         else:
             await ws.send_json({"type": "error", "message": "Unknown command"})
             print(f"Unknown command: {cmd}")
@@ -63,6 +62,23 @@ async def handle_text(text: str, ws: WebSocket):
         await ws.send_json({"type": "error", "message": "Unknown message type"})
         print(f"Unknown message type: {payload['type']}")
         return
+
+
+async def start_gemini_live(ws: WebSocket):
+    global gemini_live
+    print("Starting Gemini Live")
+    if gemini_live:
+        await gemini_live.stop()
+    gemini_live = GeminiLiveSession(ws)
+    await gemini_live.start()
+
+
+async def stop_gemini_live():
+    global gemini_live
+    print("Stopping Gemini Live")
+    if gemini_live:
+        await gemini_live.stop()
+    gemini_live = None
 
 
 @app.get("/get/vectors")
