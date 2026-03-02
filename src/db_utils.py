@@ -67,6 +67,20 @@ def create_conversation(name, summary=None, cat_id=None, timestamp=None):
         session.add(conv)
         return conv
 
+def update_conversation_summary(conv_id, summary):
+    with sessionlocal.begin() as session:
+        conv = session.get_one(Conversation, conv_id)
+        conv.summary = summary
+        session.add(conv)
+        return conv
+
+def update_conversation_category(conv_id, cat_id):
+    with sessionlocal.begin() as session:
+        conv = session.get_one(Conversation, conv_id)
+        conv.category_id = cat_id
+        session.add(conv)
+        return conv
+
 def delete_conversation(conv_id):
     with sessionlocal.begin() as session:
         conv = session.get_one(Conversation, conv_id)
@@ -79,12 +93,6 @@ def get_conversation_by_id(conv_id):
 def get_conversations_by_category_id(cat_id):
     with sessionlocal() as session:
         return session.scalars(select(Conversation).where(Conversation.category_id == cat_id)).all()
-
-def get_conversations_by_category_name(cat_name):
-    with sessionlocal() as session:
-        return session.scalars(
-            select(Conversation).join(Category).where(Category.name == cat_name)
-        ).all()
 
 def get_conversations():
     with sessionlocal() as session:
