@@ -56,4 +56,4 @@ class TestConfig:  # pylint: disable=too-few-public-methods
 
     def test_model_constant(self):
         """Test that MODEL constant is set correctly"""
-        assert MODEL == "gemini-2.5-flash-native-audio-preview-12-2025"
+        assert MODEL == "gemini-live-2.5-flash-native-audio"

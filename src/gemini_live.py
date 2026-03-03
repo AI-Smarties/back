@@ -1,8 +1,8 @@
 import asyncio
-from google import genai
+from google import genai, auth
 from gemini_tools import fetch_information
 
-MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
+MODEL = "gemini-live-2.5-flash-native-audio"
 SYSTEM_INSTRUCTION = """You are a Finnish memory manager. Listen to the audio.
 Do not speak. Do not generate audio. Upon any new topic the user mentions, use the fetch_information tool.
 """
@@ -67,7 +67,8 @@ class GeminiLiveSession:
         first_chunk = await self._audio_queue.get()
         if first_chunk is None:
             return  # stopped before any audio arrived
-        client = genai.Client()
+        _, project = auth.default()
+        client = genai.Client(vertexai=True, project=project, location="europe-north1")
         try:
             async with client.aio.live.connect(model=MODEL, config=CONFIG) as session:
                 print("Gemini Live connected")
