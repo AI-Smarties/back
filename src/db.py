@@ -19,10 +19,10 @@ Base = declarative_base()
 
 def create_tables():
     with sessionlocal.begin() as session:  # pylint: disable=no-member
-        session.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        session.execute(text("CREATE EXTENSION IF NOT EXISTS vector CASCADE"))
     Base.metadata.create_all(engine)
 
 def drop_tables():
     Base.metadata.drop_all(engine)
     with sessionlocal.begin() as session:  # pylint: disable=no-member
-        session.execute(text("DROP EXTENSION IF EXISTS vector"))
+        session.execute(text("DROP EXTENSION IF EXISTS vector CASCADE"))
