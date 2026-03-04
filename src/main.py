@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 from fastapi import FastAPI, WebSocket, HTTPException
 from sqlalchemy.exc import IntegrityError
@@ -126,12 +127,12 @@ def get_conversations(conv_id: int = None, cat_id: int = None):
 
 
 @app.get("/get/categories")
-def get_categories(cat_id: int = None, cat_name: str = None):
+def get_categories(cat_id: int = None, name: str = None):
     if cat_id is not None:
         cat = db_utils.get_category_by_id(cat_id)
-    elif cat_name is not None:
-        cat_name = cat_name.strip()
-        cat = db_utils.get_category_by_name(cat_name)
+    elif name is not None:
+        name = name.strip()
+        cat = db_utils.get_category_by_name(name)
     else:
         cats = db_utils.get_categories()
         return [{"id": cat.id, "name": cat.name} for cat in cats]
@@ -140,11 +141,44 @@ def get_categories(cat_id: int = None, cat_name: str = None):
     return [{"id": cat.id, "name": cat.name}]
 
 
+@app.post("/create/vector")
+def create_vector(text: str, conv_id: int):
+    text = text.strip()
+    try:
+        vec = db_utils.create_vector(text=text, conv_id=conv_id)
+    except IntegrityError as e:
+        raise HTTPException(409, "Foreign key constraint failed") from e
+    return {"id": vec.id, "text": vec.text, "conversation_id": vec.conversation_id}
+
+
+@app.post("/create/conversation")
+def create_conversation(name: str, summary: str = None, cat_id: int = None, timestamp: str = None):
+    name = name.strip()
+    summary = summary.strip() if summary else None
+    timestamp = datetime.fromisoformat(timestamp.strip()) if timestamp else None
+    try:
+        conv = db_utils.create_conversation(
+            name=name,
+            summary=summary,
+            cat_id=cat_id,
+            timestamp=timestamp,
+        )
+    except IntegrityError as e:
+        raise HTTPException(409, "Foreign key constraint failed") from e
+    return {
+        "id": conv.id,
+        "name": conv.name,
+        "summary": conv.summary,
+        "category_id": conv.category_id,
+        "timestamp": conv.timestamp.isoformat(),
+    }
+
+
 @app.post("/create/category")
 def create_category(name: str):
     name = name.strip()
     try:
-        cat = db_utils.create_category(name)
+        cat = db_utils.create_category(name=name)
     except IntegrityError as e:
         raise HTTPException(409, "Category already exists") from e
     return {"id": cat.id, "name": cat.name}

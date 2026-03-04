@@ -98,8 +98,8 @@ def get_conversations():
     with sessionlocal() as session:
         return session.scalars(select(Conversation)).all()
 
-def create_category(cat_name):
-    cat = Category(name=cat_name)
+def create_category(name):
+    cat = Category(name=name)
     with sessionlocal.begin() as session:
         session.add(cat)
         return cat
@@ -109,18 +109,18 @@ def delete_category_by_id(cat_id):
         cat = session.get_one(Category, cat_id)
         session.delete(cat)
 
-def delete_category_by_name(cat_name):
+def delete_category_by_name(name):
     with sessionlocal.begin() as session:
-        cat = session.scalars(select(Category).where(Category.name == cat_name)).one()
+        cat = session.scalars(select(Category).where(Category.name == name)).one()
         session.delete(cat)
 
 def get_category_by_id(cat_id):
     with sessionlocal() as session:
         return session.get(Category, cat_id)
 
-def get_category_by_name(cat_name):
+def get_category_by_name(name):
     with sessionlocal() as session:
-        return session.scalars(select(Category).where(Category.name == cat_name)).one_or_none()
+        return session.scalars(select(Category).where(Category.name == name)).one_or_none()
 
 def get_categories():
     with sessionlocal() as session:
