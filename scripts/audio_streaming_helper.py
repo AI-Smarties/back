@@ -46,6 +46,7 @@ async def stream(url: str, path: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("audio", help="Raw LINEAR16 PCM file (16kHz mono)")
+    # parser.add_argument("--url", default="wss://<staging-address>/ws/")
     parser.add_argument("--url", default="ws://localhost:8000/ws/")
     args = parser.parse_args()
     asyncio.run(stream(args.url, args.audio))

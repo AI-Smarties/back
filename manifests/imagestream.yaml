@@ -2,6 +2,7 @@ kind: ImageStream
 apiVersion: image.openshift.io/v1
 metadata:
   name: g1-smart-glasses-backend-is
+  namespace: toska-playground
   labels:
     app: g1-smart-glasses-backend
 spec:

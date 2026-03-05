@@ -4,9 +4,9 @@ metadata:
   annotations:
     alpha.image.policy.openshift.io/resolve-names: "*"
     image.openshift.io/triggers: >-
-      [{"from":{"kind":"ImageStreamTag","name":"g1-smart-glasses-backend-is:staging","namespace":"ohtuprojekti-staging"},"fieldPath":"spec.template.spec.containers[?(@.name==\"g1-smart-glasses-backend\")].image","pause":"false"}]
+      [{"from":{"kind":"ImageStreamTag","name":"g1-smart-glasses-backend-is:staging","namespace":"toska-playground"},"fieldPath":"spec.template.spec.containers[?(@.name==\"g1-smart-glasses-backend\")].image","pause":"false"}]
   name: g1-smart-glasses-backend-dep
-  namespace: ohtuprojekti-staging
+  namespace: toska-playground
 spec:
   replicas: 1
   selector:
