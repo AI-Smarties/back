@@ -7,7 +7,7 @@ metadata:
     app: g1-smart-glasses-backend
     type: external
 spec:
-  host: g1-smart-glasses-backend-toska-playground.ext.ocp-prod-0.k8s.it.helsinki.fi
+  host: g1-smart-glasses-backend-toska-playground.ext.ocp-test-0.k8s.it.helsinki.fi
   port:
     targetPort: 8000
   to:
