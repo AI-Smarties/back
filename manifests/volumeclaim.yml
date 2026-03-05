@@ -2,7 +2,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: g1-smart-glasses-claim
-  namespace: ohtuprojekti-staging
+  namespace: toska-playground
 spec:
   accessModes:
     - ReadWriteOnce
