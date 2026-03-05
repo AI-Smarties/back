@@ -101,7 +101,8 @@ def preflight_check(api: ApiClient) -> None:
         raise RuntimeError(
             "Server is missing required endpoints: "
             f"{missing_str}. "
-            "Either deploy a backend version that includes them, or run this script against a local dev server."
+            "Either deploy a backend version that includes them, "
+            "or run this script against a local dev server."
         )
 
 
