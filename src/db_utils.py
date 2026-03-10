@@ -47,7 +47,7 @@ def get_vectors():
     with sessionlocal() as session:
         return session.scalars(select(Vector)).all()
 
-def search_vectors(text, limit=1):
+def search_vectors(text, limit=1, max_distance=0.5):
     if not EMBEDDING_MODEL:
         load_embedding_model()
     embedding = EMBEDDING_MODEL.get_embeddings(
@@ -56,7 +56,9 @@ def search_vectors(text, limit=1):
     )[0].values
     with sessionlocal() as session:
         return session.scalars(
-            select(Vector).order_by(Vector.embedding.cosine_distance(embedding)).limit(limit)
+            select(Vector)
+            .where(Vector.embedding.cosine_distance(embedding) < max_distance) # how "relevant" the query response should be on scale of 0-2 (float), 0 = identical 1 = unrelated 2 = opposite
+            .limit(limit)
         ).all()
 
 def create_conversation(name, summary=None, cat_id=None, timestamp=None):
