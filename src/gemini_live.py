@@ -2,35 +2,52 @@ import asyncio
 from google import genai, auth
 from gemini_tools import fetch_information
 
+
 MODEL = "gemini-live-2.5-flash-native-audio"
-SYSTEM_INSTRUCTION = """You are a Finnish memory manager. Listen to the audio.
-Do not speak. Do not generate audio. Upon any new topic the user mentions, use the fetch_information tool.
+
+SYSTEM_INSTRUCTION = """
+You are a silent conversation observer. You NEVER produce audio.
+
+You have in your possession the vector database that contains ONLY useful information that is necessary to remember. Things that when forgotten can cause problems.
+Your job is simple: when you hear something that you might have additional information on in vector database make the fetch_information call.
+
+Skip small talk (greetings, coffee, parking, lunch, scheduling chatter).
+Do NOT fetch speculatively — only when a concrete fact, decision, deadline, 
+constraint, or named person/project is explicitly mentioned.
+
 """
 
 
 CONFIG = genai.types.LiveConnectConfig(
-    response_modalities=["AUDIO"],
     input_audio_transcription=genai.types.AudioTranscriptionConfig(),
     system_instruction=SYSTEM_INSTRUCTION,
     tools=[
         genai.types.Tool(function_declarations=[
             genai.types.FunctionDeclaration(
                 name="fetch_information",
-                description="Fetch useful information based on a text query "
-                            "from vector database. (max 1 sentence)",
+                description=(
+                    "Flag a moment where past context might be relevant. "
+                    "Call this when speakers discuss a topic that might have "
+                    "related stored facts."
+                ),
                 parameters={
                     "type":         "object",
                     "properties":   {
                         "query": {
                             "type":         "string",
-                            "description":  "The text query to search for information"
+                            "description":  "The text query that is used to query vector database"
+                        },
+                        "thinking_context":{
+                            "type":         "string",
+                            "description":  "Thought process of the gemini live why it called this tool"
                         }
                     },
-                    "required":     ["query"]
+                    "required":     ["query", "thinking_context"]
                 }
-            )
+            ),
+           
         ]),
-    ]
+    ],
 )
 
 class GeminiLiveSession:
@@ -39,6 +56,7 @@ class GeminiLiveSession:
         self._audio_queue: asyncio.Queue = asyncio.Queue(maxsize=10)
         self._task: asyncio.Task | None = None
         self.tokens_used = 0
+        self.transcript: str = ""
 
     async def start(self):
         self._task = asyncio.create_task(self._run())
@@ -47,9 +65,10 @@ class GeminiLiveSession:
         try:
             self._audio_queue.put_nowait(chunk)
         except asyncio.QueueFull:
-            pass
-
-    async def stop(self):
+            print('Que is full of audio, dropping oldest audio packet')
+            pass  
+   
+    async def stop(self) -> str:
         try:
             self._audio_queue.put_nowait(None)
         except asyncio.QueueFull:
@@ -61,6 +80,8 @@ class GeminiLiveSession:
             except (asyncio.CancelledError, Exception):  # pylint: disable=broad-except
                 pass
         print(f"session total tokens: {self.tokens_used}")
+
+        return self.transcript
 
     async def _run(self):
         # wait for first audio chunk before opening the connection
@@ -97,41 +118,47 @@ class GeminiLiveSession:
                 audio={"data": chunk, "mime_type": "audio/pcm;rate=16000"}
             )
 
+
+    async def _fetch_in_background(self, thinking_context, query, transcript):
+        tool_response = await fetch_information(thinking_context, query, transcript)
+        print(tool_response)
+        if tool_response["status"] == "found":
+            await self.ws.send_json({"type": "ai", "data": tool_response["information"]})
+
+
     async def _receive(self, session):
-        input_buf: list[str] = []
         try:
             while True:  # session.receive() only covers one turn
                 async for response in session.receive():
+                    ## accumulate the used tokens so we can monitor token usage
                     if response.usage_metadata:
                         self.tokens_used += response.usage_metadata.total_token_count or 0
-                        print(f"tokens: {self.tokens_used}")
-
+                   
+                    server_content = response.server_content
+                    # accumulate the transcriptions before toolcall so we have the latest updated transcription to function call
+                    if server_content:
+                        if server_content.input_transcription and server_content.input_transcription.text:
+                            self.transcript += server_content.input_transcription.text + " "
+                    # catch gemini lives toolcall
                     if response.tool_call:
                         for fc in response.tool_call.function_calls:
-                            tool_result = None
                             print(f"tool call: {fc.name}")
-
+                            # provide full accumulated context to 
                             if fc.name == "fetch_information":
-                                query = fc.args.get("query", "")
-                                print(f"fetching information for query: {query!r}")
-                                tool_result = fetch_information(query)
-                                print(f"fetch result: {tool_result}")
-                                await self.ws.send_json(
-                                    {"type": "ai", "data": tool_result["information"]}
-                                )
+                                # response immediately so the gemini live can continue processing audio
+                                await session.send_tool_response(function_responses=[
+                                    genai.types.FunctionResponse(id=fc.id, name=fc.name, response={"response": "ok"})
+                                ])
+                                query = fc.args['query']
+                                thinking_context = fc.args['thinking_context']
 
-                    server_content = response.server_content
-                    if not server_content:
-                        continue
-                    # accumulate input transcription chunks
-                    if server_content.input_transcription and \
-                        server_content.input_transcription.text:
-                        input_buf.append(server_content.input_transcription.text)
-                    # on turn end: flush buffered transcript as one message
-                    if server_content.turn_complete and input_buf:
-                        text = "".join(input_buf)
-                        print(f"sending user transcript: {text!r}")
-                        await self.ws.send_json({"type": "user", "data": text})
-                        input_buf.clear()
+                                # make new background task so gemini live is not interrupted
+                                asyncio.create_task(self._fetch_in_background(thinking_context, query, self.transcript))
+
+                               
+                                
+  
+
+
         except Exception as e:  # pylint: disable=broad-except
             print(f"_receive error: {e}")

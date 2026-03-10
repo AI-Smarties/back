@@ -78,7 +78,7 @@ async def stop_gemini_live():
     global gemini_live
     print("Stopping Gemini Live")
     if gemini_live:
-        await gemini_live.stop()
+        transcript = await gemini_live.stop() # this can be used for transcript summary etc
     gemini_live = None
 
 
