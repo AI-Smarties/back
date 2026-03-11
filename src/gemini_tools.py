@@ -11,7 +11,7 @@ client = genai.Client()
 
 system_prompt = """
 You are evaluating whether vector database results are relevant to an ongoing conversation. You can use transcript and thought_context as help but
-only use the vector_database_responses as source of truth
+only use the vector_database_responses as source of truth. Dont sent information to user if transcript is providing the information already
 
 Given:
 - transcript: The conversation transcript
@@ -19,7 +19,7 @@ Given:
 - vector_database_responses: Data from vector database, use only these as source of information
 
 Decide:
-- "found": results are relevant and useful to surface to the user → write a concise 1-2 sentence summary suitable for smart glasses display
+- "found": results are relevant and useful to surface to the user → write a concise 1 sentence summary suitable for smart glasses display
 - "not_relevant": results exist but are not actually relevant to the current moment
 - "error": something is wrong with the inputs
 
@@ -44,11 +44,15 @@ class Error(TypedDict):
 EvaluateResponse = SendToUserResponse | DontSendToUserResponse | Error
 
 async def evaluate_db_data(transcript: str, vector_database_response: Sequence[Vector], thinking_context: str) -> EvaluateResponse:
-
+    formatted_vectors = "\n".join(
+        f"- {vector.text}"
+        for vector in vector_database_response
+    )
+    print(formatted_vectors)
     contents = (
         f"full_conversation_transcript: {transcript}\n"
         f"thought_context: {thinking_context}\n"
-        f"vector_database_responses: {vector_database_response}"
+        f"vector_database_responses:\n{formatted_vectors}"
     )
     ## might throw 503 error, googles services are overloaded
     ## todo create retry
@@ -126,9 +130,8 @@ async def fetch_information(thinking_context: str, query: str, transcript: str) 
         return {"status": "not_relevant", "thinking": ""}
     try:
         # fetch from database the closest things that are stored in database
+        print(f"query: {query} \n thinking: {thinking_context}")
         results = search_vectors(query, limit=5, max_distance=0.3)
-        for vector in results:
-            print(vector.text)
         if not results:
             print("no vector data")
             return {"status": "not_relevant", "thinking": ""}

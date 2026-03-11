@@ -4,6 +4,7 @@ import vertexai
 from vertexai.language_models import TextEmbeddingModel
 import google
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from db import sessionlocal
 from models import Conversation, Vector, Category, EMBEDDING_DIMENSIONS
 
@@ -57,6 +58,7 @@ def search_vectors(text, limit=1, max_distance=0.5):
     with sessionlocal() as session:
         return session.scalars(
             select(Vector)
+            .options(joinedload(Vector.conversation))
             .where(Vector.embedding.cosine_distance(embedding) < max_distance) # how "relevant" the query response should be on scale of 0-2 (float), 0 = identical 1 = unrelated 2 = opposite
             .limit(limit)
         ).all()
