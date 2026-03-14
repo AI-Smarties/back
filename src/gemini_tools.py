@@ -2,6 +2,7 @@
 Tool functions for Gemini Live API.
 These functions can be called by Gemini as tool calls.
 """
+import asyncio
 from typing import Literal, TypedDict, Sequence
 from models import Vector
 from db_utils import search_vectors
@@ -10,8 +11,8 @@ from google import genai
 client = genai.Client()
 
 system_prompt = """
-You are evaluating whether vector database results are relevant to an ongoing conversation. You can use transcript and thought_context as help but
-only use the vector_database_responses as source of truth. Dont sent information to user if transcript is providing the information already
+You are evaluating whether vector database results are relevant to an ongoing conversation. You can use transcript and thought_context as help to deduct the information. Dont send information to user if transcript is providing the information already.
+You can also combine the information from database vector resposes to have more updated information
 
 Given:
 - transcript: The conversation transcript
@@ -45,7 +46,7 @@ EvaluateResponse = SendToUserResponse | DontSendToUserResponse | Error
 
 async def evaluate_db_data(transcript: str, vector_database_response: Sequence[Vector], thinking_context: str) -> EvaluateResponse:
     formatted_vectors = "\n".join(
-        f"- {vector.text}"
+        f"- {vector.conversation.timestamp} {vector.text}"
         for vector in vector_database_response
     )
     print(formatted_vectors)
@@ -129,9 +130,11 @@ async def fetch_information(thinking_context: str, query: str, transcript: str) 
     if not query:
         return {"status": "not_relevant", "thinking": ""}
     try:
-        # fetch from database the closest things that are stored in database
         print(f"query: {query} \n thinking: {thinking_context}")
-        results = search_vectors(query, limit=5, max_distance=0.3)
+        # database query needs to be async so it doesnt block gemini live
+        results = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: search_vectors(query, limit=5, max_distance=0.5)
+        )
         if not results:
             print("no vector data")
             return {"status": "not_relevant", "thinking": ""}
