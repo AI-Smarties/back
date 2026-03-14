@@ -56,10 +56,12 @@ def search_vectors(text, limit=1, max_distance=0.5):
         output_dimensionality=EMBEDDING_DIMENSIONS,
     )[0].values
     with sessionlocal() as session:
+        distance = Vector.embedding.cosine_distance(embedding) # how "relevant" the query response should be on scale of 0-2 (float), 0 = identical 1 = unrelated 2 = opposite
         return session.scalars(
             select(Vector)
             .options(joinedload(Vector.conversation))
-            .where(Vector.embedding.cosine_distance(embedding) < max_distance) # how "relevant" the query response should be on scale of 0-2 (float), 0 = identical 1 = unrelated 2 = opposite
+            .where(distance < max_distance)
+            .order_by(distance)
             .limit(limit)
         ).all()
 
