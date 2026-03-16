@@ -6,9 +6,11 @@ import asyncio
 from typing import Literal, TypedDict, Sequence
 from models import Vector
 from db_utils import search_vectors
-from google import genai
+from google import genai, auth
 
-client = genai.Client()
+_, project = auth.default()
+client = genai.Client(vertexai=True, project=project, location="europe-north1")
+
 
 system_prompt = """
 Answer the question in thought_context using only the vector_database_responses as source.
