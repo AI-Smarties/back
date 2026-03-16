@@ -1,4 +1,5 @@
 import asyncio
+import json
 from google import genai, auth
 from gemini_tools import fetch_information
 
@@ -15,7 +16,8 @@ WHEN TO CALL:
 
 DO NOT CALL:
 - For small talk, greetings, food, weather, or office chatter
-- For the same topic you have already queried this session
+- For any topic already covered in already_queried from a previous tool response, check it before every call
+- For the same topic with different wording, treat similar queries as duplicates
 - Speculatively. Only react to what is actually said, never explore topics not mentioned
 
 QUERY FORMAT:
@@ -53,6 +55,19 @@ CONFIG = genai.types.LiveConnectConfig(
                         }
                     },
                     "required":     ["query", "thinking_context"]
+                },
+                response={
+                    "type": "object",
+                    "properties": {
+                        "response": {
+                            "type": "string",
+                            "description": "Acknowledgement that the query was received"
+                        },
+                        "already_queried": {
+                            "type": "string",
+                            "description": "JSON list of all queries made so far this session including the current one. Do not call fetch_information for any topic already present in this list."
+                        }
+                    }
                 }
             ),
            
@@ -67,6 +82,7 @@ class GeminiLiveSession:
         self._task: asyncio.Task | None = None
         self.tokens_used = 0
         self.transcript: str = ""
+        self.query_history: list[dict] = []  # [{query, thinking_context, answer}]
         self._fetch_semaphore = asyncio.Semaphore(2)    # 2 concurred gemini tool calls
         self._running = True
 
@@ -143,8 +159,10 @@ class GeminiLiveSession:
             print("dropping fetch, too busy")
             return
         try:
-            tool_response = await fetch_information(thinking_context, query, transcript)
+            tool_response = await fetch_information(thinking_context, query, transcript, self.query_history)
             print(tool_response)
+            answer = tool_response.get("information") if tool_response["status"] == "found" else None
+            self.query_history.append({"query": query, "thinking_context": thinking_context, "answer": answer})
             if tool_response["status"] == "found" and self._running:
                 await self.ws.send_json({"type": "ai", "data": tool_response["information"]})
         finally:
@@ -170,8 +188,10 @@ class GeminiLiveSession:
                             # provide full accumulated context to 
                             if fc.name == "fetch_information":
                                 # response immediately so the gemini live can continue processing audio
+                                # include already queried topics so gemini live avoids requerying
+                                previous = [{"query": h["query"], "thinking_context": h["thinking_context"]} for h in self.query_history]
                                 await session.send_tool_response(function_responses=[
-                                    genai.types.FunctionResponse(id=fc.id, name=fc.name, response={"response": "ok"})
+                                    genai.types.FunctionResponse(id=fc.id, name=fc.name, response={"response": "ok", "already_queried": json.dumps(previous)})
                                 ])
                                 query = fc.args['query']
                                 thinking_context = fc.args['thinking_context']

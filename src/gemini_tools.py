@@ -3,13 +3,14 @@ Tool functions for Gemini Live API.
 These functions can be called by Gemini as tool calls.
 """
 import asyncio
+import json
 from typing import Literal, TypedDict, Sequence
 from models import Vector
 from db_utils import search_vectors
 from google import genai, auth
 
 _, project = auth.default()
-client = genai.Client(vertexai=True, project=project, location="europe-north1")
+client = genai.Client(vertexai=True, project=project, location="global")
 
 
 system_prompt = """
@@ -24,6 +25,7 @@ Given:
 - transcript: The conversation transcript
 - thought_context: Why the query was made by Gemini Live
 - vector_database_responses: Data from vector database, use only these as source of information
+- previous_queries_and_answers: Earlier tool calls this session with their answers. Do not repeat information already sent.
 
 Decide:
 - "found": vector_database_responses answers the question or fulfills the reason in thought_context
@@ -50,7 +52,7 @@ class Error(TypedDict):
 
 EvaluateResponse = SendToUserResponse | DontSendToUserResponse | Error
 
-async def evaluate_db_data(transcript: str, vector_database_response: Sequence[Vector], thinking_context: str) -> EvaluateResponse:
+async def evaluate_db_data(transcript: str, vector_database_response: Sequence[Vector], thinking_context: str, query_history: list[dict]) -> EvaluateResponse:
     formatted_vectors = "\n".join(
         f"- {vector.conversation.timestamp} {vector.text}"
         for vector in vector_database_response
@@ -59,7 +61,8 @@ async def evaluate_db_data(transcript: str, vector_database_response: Sequence[V
     contents = (
         f"full_conversation_transcript: {transcript}\n"
         f"thought_context: {thinking_context}\n"
-        f"vector_database_responses:\n{formatted_vectors}"
+        f"vector_database_responses:\n{formatted_vectors}\n"
+        f"previous_queries_and_answers: {json.dumps(query_history)}"
     )
     ## might throw 503 error, googles services are overloaded
     ## todo create retry
@@ -106,7 +109,7 @@ async def evaluate_db_data(transcript: str, vector_database_response: Sequence[V
         return {"status": "error", "error_message": data.get("error_message", "unknown")}
 
 
-async def fetch_information(thinking_context: str, query: str, transcript: str) -> EvaluateResponse:
+async def fetch_information(thinking_context: str, query: str, transcript: str, query_history: list[dict] | None = None) -> EvaluateResponse:
     """
     Fetch useful information based on a text query from vector database.
 
@@ -114,6 +117,7 @@ async def fetch_information(thinking_context: str, query: str, transcript: str) 
         thinking_context: Thinking context of gemini live why it invoked this function
         query: The text query to search for information
         transcript: Transcript of the whole conversation
+        query_history: queries that is made in this session
 
     Returns:
         EvaluateResponse — one of:
@@ -138,6 +142,7 @@ async def fetch_information(thinking_context: str, query: str, transcript: str) 
         return {"status": "not_relevant", "thinking": ""}
     try:
         print(f"query: {query} \n thinking: {thinking_context}")
+        print(json.dumps(query_history, indent=2))
         # database query needs to be async so it doesnt block gemini live
         results = await asyncio.get_event_loop().run_in_executor(
             None, lambda: search_vectors(query, limit=5, max_distance=0.5)
@@ -145,6 +150,6 @@ async def fetch_information(thinking_context: str, query: str, transcript: str) 
         if not results:
             print("no vector data")
             return {"status": "not_relevant", "thinking": ""}
-        return await evaluate_db_data(transcript, results, thinking_context)
+        return await evaluate_db_data(transcript, results, thinking_context, query_history or [])
     except Exception as e:
         return {"status": "error", "error_message": f"Failed to fetch information: {e}"}
