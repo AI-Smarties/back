@@ -12,3 +12,4 @@ pgvector
 
 vertexai
 google-genai
+tzdata
