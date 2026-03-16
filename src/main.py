@@ -1,7 +1,11 @@
+from contextlib import asynccontextmanager
 from datetime import datetime
+import asyncio
 import json
+
 from fastapi import FastAPI, WebSocket, HTTPException
 from sqlalchemy.exc import IntegrityError
+
 from gemini_live import GeminiLiveSession
 from memory_extractor import extract_and_save_information_to_database
 import db_utils
@@ -9,8 +13,18 @@ import db
 
 
 # pylint: disable=invalid-name global-statement
-app = FastAPI()
 gemini_live = None
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Create database tables automatically when the app starts."""
+    print("Creating database tables on startup (if missing)")
+    db.create_tables()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.websocket("/ws/")
@@ -25,7 +39,9 @@ async def audio_ws(ws: WebSocket):
             if msg["type"] == "websocket.receive":
                 if "bytes" in msg:  # audio tulee binäärinä
                     if not gemini_live:
-                        await ws.send_json({"type": "error", "message": "Gemini Live not started"})
+                        await ws.send_json(
+                            {"type": "error", "message": "Gemini Live not started"}
+                        )
                         print("Received audio chunk but Gemini Live not started")
                         continue
                     gemini_live.push_audio(msg["bytes"])
@@ -42,15 +58,20 @@ async def handle_text(text: str, ws: WebSocket):
         await ws.send_json({"type": "error", "message": "Invalid JSON"})
         print(f"Invalid JSON: {text}")
         return
+
     if "type" not in payload:
         await ws.send_json({"type": "error", "message": "Missing type in message"})
         print(f"Missing type in message: {payload}")
         return
+
     if payload["type"] == "control":
         if "cmd" not in payload:
-            await ws.send_json({"type": "error", "message": "Missing command in control message"})
+            await ws.send_json(
+                {"type": "error", "message": "Missing command in control message"}
+            )
             print(f"Missing command in control message: {payload}")
             return
+
         cmd = payload["cmd"]
         if cmd == "start":
             await start_gemini_live(ws)
@@ -79,9 +100,15 @@ async def stop_gemini_live():
     global gemini_live
     print("Stopping Gemini Live")
     if gemini_live:
-        transcript = await gemini_live.stop() # this can be used for transcript summary etc
+        transcript = await gemini_live.stop()
         print(transcript)
-        await extract_and_save_information_to_database(transcript)
+
+        transcript = transcript.strip()
+        if transcript:
+            asyncio.create_task(
+                extract_and_save_information_to_database(transcript)
+            )
+
     gemini_live = None
 
 
@@ -91,16 +118,22 @@ def get_vectors(vec_id: int = None, conv_id: int = None):
         vec = db_utils.get_vector_by_id(vec_id)
         if vec is None:
             return []
-        return [{"id": vec.id, "text": vec.text, "conversation_id": vec.conversation_id}]
+        return [{
+            "id": vec.id,
+            "text": vec.text,
+            "conversation_id": vec.conversation_id,
+        }]
+
     if conv_id is not None:
         vecs = db_utils.get_vectors_by_conversation_id(conv_id)
     else:
         vecs = db_utils.get_vectors()
+
     return [{
         "id": vec.id,
         "text": vec.text,
         "conversation_id": vec.conversation_id,
-        } for vec in vecs]
+    } for vec in vecs]
 
 
 @app.get("/get/conversations")
@@ -116,10 +149,12 @@ def get_conversations(conv_id: int = None, cat_id: int = None):
             "category_id": conv.category_id,
             "timestamp": conv.timestamp.isoformat(),
         }]
+
     if cat_id is not None:
         convs = db_utils.get_conversations_by_category_id(cat_id)
     else:
         convs = db_utils.get_conversations()
+
     return [{
         "id": conv.id,
         "name": conv.name,
@@ -139,8 +174,10 @@ def get_categories(cat_id: int = None, name: str = None):
     else:
         cats = db_utils.get_categories()
         return [{"id": cat.id, "name": cat.name} for cat in cats]
+
     if cat is None:
         return []
+
     return [{"id": cat.id, "name": cat.name}]
 
 
@@ -155,7 +192,12 @@ def create_vector(text: str, conv_id: int):
 
 
 @app.post("/create/conversation")
-def create_conversation(name: str, summary: str = None, cat_id: int = None, timestamp: str = None):
+def create_conversation(
+    name: str,
+    summary: str = None,
+    cat_id: int = None,
+    timestamp: str = None,
+):
     name = name.strip()
     summary = summary.strip() if summary else None
     timestamp = datetime.fromisoformat(timestamp.strip()) if timestamp else None
