@@ -11,7 +11,11 @@ from google import genai
 client = genai.Client()
 
 system_prompt = """
-You are evaluating whether vector database results are relevant to an ongoing conversation. You can use transcript and thought_context as help to deduct the information. Dont send information to user if transcript is providing the information already.
+Answer the question in thought_context using only the vector_database_responses as source.
+If the results don't answer the question directly, return "not_relevant".
+You can use the transcript to understand context but not as an information source.
+
+Dont send information to user if transcript is providing the information already.
 You can also combine the information from database vector resposes to have more updated information
 
 Given:
@@ -20,7 +24,7 @@ Given:
 - vector_database_responses: Data from vector database, use only these as source of information
 
 Decide:
-- "found": results are relevant and useful to surface to the user → write a concise 1 sentence summary suitable for smart glasses display
+- "found": vector_database_responses answers the question or fulfills the reason in thought_context
 - "not_relevant": results exist but are not actually relevant to the current moment
 - "error": something is wrong with the inputs
 
@@ -89,6 +93,7 @@ async def evaluate_db_data(transcript: str, vector_database_response: Sequence[V
         )
     )
 
+    print(f"evaluate_db_data tokens: {response.usage_metadata.total_token_count}")
     data = response.parsed
     status = data.get("status")
     if status == "found":
