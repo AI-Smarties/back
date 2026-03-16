@@ -3,6 +3,7 @@ import json
 from fastapi import FastAPI, WebSocket, HTTPException
 from sqlalchemy.exc import IntegrityError
 from gemini_live import GeminiLiveSession
+from memory_extractor import extract_and_save_information_to_database
 import db_utils
 import db
 
@@ -79,6 +80,8 @@ async def stop_gemini_live():
     print("Stopping Gemini Live")
     if gemini_live:
         transcript = await gemini_live.stop() # this can be used for transcript summary etc
+        print(transcript)
+        await extract_and_save_information_to_database(transcript)
     gemini_live = None
 
 
