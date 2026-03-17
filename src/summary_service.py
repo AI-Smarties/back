@@ -1,51 +1,42 @@
-from google import auth, genai
+from google import auth, genai  # pylint: disable=no-name-in-module
 
-MODEL = "gemini-2.5-flash"
-_, PROJECT = auth.default()
-
-SYSTEM_PROMPT = """
-You are summarizing a final validated transcript from a spoken conversation.
-
-Your task:
-- Write a concise factual summary in plain text.
-- Focus on the most important discussion points, decisions, plans, and follow-up items.
-- Do not invent information.
-- Do not add interpretation that is not supported by the transcript.
-- Keep the summary compact and useful for later review.
-- Prefer 3-6 sentences.
-- If the transcript is too short or contains no meaningful content, return an empty string.
-"""
+CLIENT = None
 
 
-def generate_summary(transcript: str) -> str:
-    """
-    Generate a concise summary from the final transcript text using Gemini.
+def get_client():
+    """Create Gemini client lazily so tests can import without ADC."""
+    global CLIENT  # pylint: disable=global-statement
+    if CLIENT is None:
+        _, project = auth.default()
+        CLIENT = genai.Client(
+            vertexai=True,
+            project=project,
+            location="europe-north1",
+        )
+    return CLIENT
 
-    Returns:
-        str: summary text, or empty string if transcript is empty or not useful.
 
-    Raises:
-        Exception: propagated to caller so the caller can handle generation errors.
-    """
+def generate_summary(transcript: str) -> str | None:
     transcript = transcript.strip()
     if not transcript:
-        return ""
+        return None
 
-    if len(transcript) < 20:
-        return ""
-
-    client = genai.Client(
-        vertexai=True,
-        project=PROJECT,
-        location="europe-north1",
-    )
-
-    prompt = f"{SYSTEM_PROMPT}\n\nTranscript:\n{transcript}"
+    client = get_client()
 
     response = client.models.generate_content(
-        model=MODEL,
-        contents=prompt,
+        model="gemini-2.5-flash-lite",
+        contents=transcript,
+        config=genai.types.GenerateContentConfig(
+            system_instruction=(
+                "Summarize this meeting/session briefly and clearly. "
+                "Focus on the key decision, topic, or outcome."
+            ),
+        ),
     )
 
-    summary = getattr(response, "text", "") or ""
-    return summary.strip()
+    text = getattr(response, "text", None)
+    if not text:
+        return None
+
+    text = text.strip()
+    return text or None
