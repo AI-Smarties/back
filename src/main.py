@@ -52,7 +52,10 @@ async def audio_ws(ws: WebSocket):
         await stop_gemini_live()
 
 
-async def handle_text(text: str, ws: WebSocket):
+async def handle_text(  # pylint: disable=too-many-return-statements
+    text: str,
+    ws: WebSocket,
+):
     global LATEST_CALENDAR_CONTEXT, SELECTED_CATEGORY_ID  # pylint: disable=global-statement
 
     try:
