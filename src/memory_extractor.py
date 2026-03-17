@@ -14,8 +14,20 @@ from db_utils import (
 )
 from summary_service import generate_summary
 
-_, project = auth.default()
-client = genai.Client(vertexai=True, project=project, location="europe-north1")
+CLIENT = None
+
+
+def get_client():
+    """Create Gemini client lazily so tests can import without ADC."""
+    global CLIENT  # pylint: disable=global-statement
+    if CLIENT is None:
+        _, project = auth.default()
+        CLIENT = genai.Client(
+            vertexai=True,
+            project=project,
+            location="europe-north1",
+        )
+    return CLIENT
 
 SYSTEM_PROMPT = """
 You extract facts from meeting transcripts that would cause real problems if forgotten.
@@ -55,6 +67,7 @@ async def memory_extractor_worker(transcript):
             "vectors": [{"data": str, "reason": str}]
         }
     """
+    client = get_client()
     response = await client.aio.models.generate_content(
         model="gemini-2.5-flash-lite",
         contents=transcript,

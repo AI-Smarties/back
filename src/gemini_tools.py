@@ -12,8 +12,16 @@ from google import auth, genai  # pylint: disable=no-name-in-module
 from db_utils import search_vectors
 from models import Vector
 
-_, project = auth.default()
-client = genai.Client(vertexai=True, project=project, location="global")
+CLIENT = None
+
+
+def get_client():
+    """Create Gemini client lazily so tests can import without ADC."""
+    global CLIENT  # pylint: disable=global-statement
+    if CLIENT is None:
+        _, project = auth.default()
+        CLIENT = genai.Client(vertexai=True, project=project, location="global")
+    return CLIENT
 
 
 SYSTEM_PROMPT = """
@@ -79,6 +87,7 @@ async def evaluate_db_data(
         f"previous_queries_and_answers: {json.dumps(query_history)}"
     )
 
+    client = get_client()
     response = await client.aio.models.generate_content(
         model="gemini-2.5-flash-lite",
         contents=contents,
@@ -153,31 +162,6 @@ async def fetch_information(
 ) -> EvaluateResponse:
     """
     Fetch useful information based on a text query from vector database.
-
-    Args:
-        thinking_context: Thinking context of gemini live why it invoked this function
-        query: The text query to search for information
-        transcript: Transcript of the whole conversation
-        query_history: Queries that have been made in this session
-
-    Returns:
-        EvaluateResponse — one of:
-            {
-                "status": "found",
-                "information": str,
-                "score": float,
-                "thinking": str
-            }
-
-            {
-                "status": "not_relevant",
-                "thinking": str
-            }
-
-            {
-                "status": "error",
-                "error_message": str
-            }
     """
     if not query:
         return {"status": "not_relevant", "thinking": ""}
