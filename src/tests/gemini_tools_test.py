@@ -1,53 +1,86 @@
-from unittest.mock import patch, MagicMock
-from gemini_tools import save_information, fetch_information
+from unittest.mock import patch
 
+import pytest
 
-class TestSaveInformation:
-    """Test cases for save_information function"""
-
-    def test_save_with_valid_information(self):
-        """Test saving valid information"""
-        with patch('gemini_tools.create_vector') as mock_create:
-            result = save_information("Test info", 1)
-            assert result["status"] == "success"
-            assert "Test info" in result["message"]
-            mock_create.assert_called_once_with("Test info", 1)
-
-    def test_save_with_empty_information(self):
-        """Test that empty information returns error"""
-        result = save_information("", 1)
-        assert result["status"] == "error"
-        assert "cannot be empty" in result["message"]
-
-    def test_save_with_database_error(self):
-        """Test handling of database errors"""
-        with patch('gemini_tools.create_vector', side_effect=Exception("DB error")):
-            result = save_information("Test info", 1)
-            assert result["status"] == "error"
-            assert "Failed to save" in result["message"]
+from gemini_tools import fetch_information
 
 
 class TestFetchInformation:
-    """Test cases for fetch_information function"""
+    """Test cases for fetch_information function."""
 
-    def test_fetch_with_valid_query(self):
-        """Test fetching information with valid query"""
-        mock_result = MagicMock()
-        mock_result.text = "Found information"
-        with patch('gemini_tools.search_vectors', return_value=[mock_result]):
-            result = fetch_information("test query")
-            assert result["status"] == "success"
-            assert result["information"] == "Found information"
+    @pytest.mark.asyncio
+    async def test_fetch_with_empty_query(self):
+        """Empty query should return not_relevant."""
+        result = await fetch_information(
+            thinking_context="Need prior context",
+            query="",
+            transcript="Budget discussion transcript",
+            query_history=[],
+        )
+        assert result["status"] == "not_relevant"
+        assert "thinking" in result
 
-    def test_fetch_with_empty_query(self):
-        """Test that empty query returns error"""
-        result = fetch_information("",)
-        assert result["status"] == "error"
-        assert "cannot be empty" in result["message"]
+    @pytest.mark.asyncio
+    async def test_fetch_with_no_results(self):
+        """No vector matches should return not_relevant."""
+        with patch("gemini_tools.search_vectors", return_value=[]):
+            result = await fetch_information(
+                thinking_context="Need prior budget context",
+                query="budget",
+                transcript="We are discussing budget now",
+                query_history=[],
+            )
+            assert result["status"] == "not_relevant"
+            assert "thinking" in result
 
-    def test_fetch_with_no_results(self):
-        """Test fetching when no information is found"""
-        with patch('gemini_tools.search_vectors', return_value=[]):
-            result = fetch_information("test query")
-            assert result["status"] == "success"
-            assert "No relevant information" in result["information"]
+    @pytest.mark.asyncio
+    async def test_fetch_with_search_error(self):
+        """Search failure should return error."""
+        with patch(
+            "gemini_tools.search_vectors",
+            side_effect=Exception("DB error"),
+        ):
+            result = await fetch_information(
+                thinking_context="Need prior budget context",
+                query="budget",
+                transcript="We are discussing budget now",
+                query_history=[],
+            )
+            assert result["status"] == "error"
+            assert "Failed to fetch information" in result["error_message"]
+
+    @pytest.mark.asyncio
+    async def test_fetch_with_valid_query(self):
+        """Valid search result should be evaluated and returned."""
+        mock_result = object()
+
+        async def mock_evaluate(
+            transcript,
+            vector_database_response,
+            thinking_context,
+            query_history,
+        ):
+            assert transcript == "Current transcript"
+            assert vector_database_response == [mock_result]
+            assert thinking_context == "Need earlier project info"
+            assert query_history == []
+            return {
+                "status": "found",
+                "information": "Found information",
+                "score": 0.95,
+                "thinking": "Relevant prior context found",
+            }
+
+        with patch("gemini_tools.search_vectors", return_value=[mock_result]):
+            with patch("gemini_tools.evaluate_db_data", side_effect=mock_evaluate):
+                result = await fetch_information(
+                    thinking_context="Need earlier project info",
+                    query="test query",
+                    transcript="Current transcript",
+                    query_history=[],
+                )
+
+        assert result["status"] == "found"
+        assert result["information"] == "Found information"
+        assert result["score"] == 0.95
+        assert result["thinking"] == "Relevant prior context found"
