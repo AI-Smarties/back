@@ -12,9 +12,9 @@ import db_utils
 import db
 
 
-gemini_live = None
-latest_calendar_context = None
-selected_category_id = None
+GEMINI_LIVE = None
+LATEST_CALENDAR_CONTEXT = None
+SELECTED_CATEGORY_ID = None
 
 
 @asynccontextmanager
@@ -33,27 +33,27 @@ async def audio_ws(ws: WebSocket):
     await ws.accept()
     await ws.send_json({"type": "control", "cmd": "ready"})
     try:
-      while True:
-        msg = await ws.receive()
-        if msg["type"] == "websocket.disconnect":
-            break
-        if msg["type"] == "websocket.receive":
-            if "bytes" in msg:
-                if not gemini_live:
-                    await ws.send_json(
-                        {"type": "error", "message": "Gemini Live not started"}
-                    )
-                    print("Received audio chunk but Gemini Live not started")
-                    continue
-                gemini_live.push_audio(msg["bytes"])
-            elif "text" in msg:
-                await handle_text(msg["text"], ws)
+        while True:
+            msg = await ws.receive()
+            if msg["type"] == "websocket.disconnect":
+                break
+            if msg["type"] == "websocket.receive":
+                if "bytes" in msg:
+                    if not GEMINI_LIVE:
+                        await ws.send_json(
+                            {"type": "error", "message": "Gemini Live not started"}
+                        )
+                        print("Received audio chunk but Gemini Live not started")
+                        continue
+                    GEMINI_LIVE.push_audio(msg["bytes"])
+                elif "text" in msg:
+                    await handle_text(msg["text"], ws)
     finally:
         await stop_gemini_live()
 
 
 async def handle_text(text: str, ws: WebSocket):
-    global latest_calendar_context, selected_category_id
+    global LATEST_CALENDAR_CONTEXT, SELECTED_CATEGORY_ID  # pylint: disable=global-statement
 
     try:
         payload = json.loads(text)
@@ -62,61 +62,66 @@ async def handle_text(text: str, ws: WebSocket):
         print(f"Invalid JSON: {text}")
         return
 
-    if "type" not in payload:
+    payload_type = payload.get("type")
+    if payload_type is None:
         await ws.send_json({"type": "error", "message": "Missing type in message"})
         print(f"Missing type in message: {payload}")
         return
 
-    if payload["type"] == "control":
-        if "cmd" not in payload:
+    if payload_type == "control":
+        cmd = payload.get("cmd")
+        if cmd is None:
             await ws.send_json(
                 {"type": "error", "message": "Missing command in control message"}
             )
             print(f"Missing command in control message: {payload}")
             return
 
-        cmd = payload["cmd"]
         if cmd == "start":
             await start_gemini_live(ws)
-        elif cmd == "stop":
+            return
+        if cmd == "stop":
             await stop_gemini_live()
-        else:
-            await ws.send_json({"type": "error", "message": "Unknown command"})
-            print(f"Unknown command: {cmd}")
             return
 
-    elif payload["type"] == "calendar_context":
-        latest_calendar_context = payload.get("data")
-        print(f"Received calendar context: {latest_calendar_context}")
-        await ws.send_json({"type": "control", "cmd": "calendar_context_received"})
+        await ws.send_json({"type": "error", "message": "Unknown command"})
+        print(f"Unknown command: {cmd}")
         return
 
-    elif payload["type"] == "selected_category":
-        selected_category_id = payload.get("category_id")
-        print(f"Received selected category id: {selected_category_id}")
-        await ws.send_json({"type": "control", "cmd": "selected_category_received"})
+    if payload_type == "calendar_context":
+        LATEST_CALENDAR_CONTEXT = payload.get("data")
+        print(f"Received calendar context: {LATEST_CALENDAR_CONTEXT}")
+        await ws.send_json(
+            {"type": "control", "cmd": "calendar_context_received"}
+        )
         return
 
-    else:
-        await ws.send_json({"type": "error", "message": "Unknown message type"})
-        print(f"Unknown message type: {payload['type']}")
+    if payload_type == "selected_category":
+        SELECTED_CATEGORY_ID = payload.get("category_id")
+        print(f"Received selected category id: {SELECTED_CATEGORY_ID}")
+        await ws.send_json(
+            {"type": "control", "cmd": "selected_category_received"}
+        )
         return
+
+    await ws.send_json({"type": "error", "message": "Unknown message type"})
+    print(f"Unknown message type: {payload_type}")
 
 
 async def start_gemini_live(ws: WebSocket):
-    global gemini_live
+    global GEMINI_LIVE  # pylint: disable=global-statement
     print("Starting Gemini Live")
-    if gemini_live:
-        await gemini_live.stop()
-    gemini_live = GeminiLiveSession(ws)
-    await gemini_live.start()
+    if GEMINI_LIVE:
+        await GEMINI_LIVE.stop()
+    GEMINI_LIVE = GeminiLiveSession(ws)
+    await GEMINI_LIVE.start()
 
 
 async def stop_gemini_live():
-    global gemini_live
+    global GEMINI_LIVE  # pylint: disable=global-statement
     print("Stopping Gemini Live")
-    if gemini_live:
-        transcript = await gemini_live.stop()
+    if GEMINI_LIVE:
+        transcript = await GEMINI_LIVE.stop()
         print(transcript)
 
         transcript = transcript.strip()
@@ -124,11 +129,11 @@ async def stop_gemini_live():
             asyncio.create_task(
                 extract_and_save_information_to_database(
                     transcript,
-                    cat_id=selected_category_id,
+                    cat_id=SELECTED_CATEGORY_ID,
                 )
             )
 
-    gemini_live = None
+    GEMINI_LIVE = None
 
 
 @app.get("/get/vectors")
@@ -254,7 +259,7 @@ def update_conversation_category(conv_id: int, cat_id: int):
         conv = db_utils.update_conversation_category(conv_id=conv_id, cat_id=cat_id)
     except IntegrityError as e:
         raise HTTPException(409, "Foreign key constraint failed") from e
-    except Exception as e:
+    except (LookupError, ValueError) as e:
         raise HTTPException(404, f"Conversation or category not found: {e}") from e
 
     return {

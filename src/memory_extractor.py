@@ -17,10 +17,10 @@ from summary_service import generate_summary
 _, project = auth.default()
 client = genai.Client(vertexai=True, project=project, location="europe-north1")
 
-system_prompt = """
+SYSTEM_PROMPT = """
 You extract facts from meeting transcripts that would cause real problems if forgotten.
 
-SAVE: deadlines, decisions, scope changes, budget figures, named responsibilities, technical blockers, date and time of next meeting
+SAVE: deadlines, decisions, scope changes, budget figures, named responsibilities, technical blockers
 SKIP: how a decision was reached, confirmations of things already stated, small talk, food, office logistics, parking
 
 For "name": create a short descriptive title that captures the key topic of the conversation.
@@ -59,7 +59,7 @@ async def memory_extractor_worker(transcript):
         model="gemini-2.5-flash-lite",
         contents=transcript,
         config=genai.types.GenerateContentConfig(
-            system_instruction=system_prompt,
+            system_instruction=SYSTEM_PROMPT,
             response_mime_type="application/json",
             response_schema={
                 "type": "object",
@@ -103,8 +103,8 @@ async def extract_and_save_information_to_database(
     """
     transcript = transcript.strip()
     if not transcript:
-      print("Transcript empty, skipping extraction and summary generation")
-      return
+        print("Transcript empty, skipping extraction and summary generation")
+        return
 
     print("extracting information from transcript")
 
@@ -117,7 +117,7 @@ async def extract_and_save_information_to_database(
             extracted_name = extracted_name or information_vectors.get("name")
             extracted_vectors = information_vectors.get("vectors", [])
             print(json.dumps(information_vectors, indent=2))
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"memory_extractor_worker failed: {e}")
 
     try:
@@ -131,7 +131,7 @@ async def extract_and_save_information_to_database(
                 cat_id=cat_id,
             ),
         )
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"store_data failed: {e}")
 
 
@@ -162,7 +162,7 @@ def store_data(transcript, vectors, name=None, conversation_id=None, cat_id=None
             print(f"summary saved for conversation {conv_id}")
         else:
             print(f"no summary generated for conversation {conv_id}")
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"summary generation failed for conversation {conv_id}: {e}")
 
     conv = get_conversation_by_id(conv_id)
@@ -171,5 +171,5 @@ def store_data(transcript, vectors, name=None, conversation_id=None, cat_id=None
     print(f"conversation: {conv.id} {conv.name}")
     print(f"summary: {conv.summary}")
     print(f"category_id: {conv.category_id}")
-    for v in saved_vectors:
-        print(f"  vector {v.id}: {v.text}")
+    for vector in saved_vectors:
+        print(f"  vector {vector.id}: {vector.text}")
