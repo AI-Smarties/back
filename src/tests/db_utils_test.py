@@ -92,7 +92,9 @@ def test_vectors_with_stub_embedding_model(monkeypatch):
         def get_embeddings(self, texts, output_dimensionality):
             assert isinstance(texts, list)
             assert output_dimensionality == db_utils.EMBEDDING_DIMENSIONS
-            return [SimpleNamespace(values=[0.0] * db_utils.EMBEDDING_DIMENSIONS)]
+            embedding = [0.0] * db_utils.EMBEDDING_DIMENSIONS
+            embedding[0] = 1.0
+            return [SimpleNamespace(values=embedding)]
 
     monkeypatch.setattr(db_utils, "EMBEDDING_MODEL", _StubEmbeddingModel())
 
