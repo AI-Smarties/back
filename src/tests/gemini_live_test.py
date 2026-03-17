@@ -30,17 +30,18 @@ class TestGeminiLiveSession:
 
     def test_push_audio_adds_to_queue(self, session):
         """Test that audio chunks are added to the queue"""
-        audio_chunk = b"test audio data"
+        audio_chunk = b"\x00\x01" * 8  # valid int16 PCM bytes
         session.push_audio(audio_chunk)
         assert session._audio_queue.qsize() == 1
 
     def test_push_audio_ignores_when_queue_full(self, session):
         """Test that audio is silently dropped when queue is full"""
+        pcm_chunk = b"\x00\x01" * 4  # valid int16 PCM bytes
         # Fill the queue
         for _ in range(10):
-            session.push_audio(b"data")
+            session.push_audio(pcm_chunk)
         # Try to add one more
-        session.push_audio(b"extra")
+        session.push_audio(pcm_chunk)
         assert session._audio_queue.qsize() == 10
 
     @pytest.mark.asyncio

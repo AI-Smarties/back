@@ -1,6 +1,7 @@
 import asyncio
 import json
 import time
+import numpy as np
 
 from google import auth, genai
 
@@ -51,7 +52,10 @@ CONFIG = genai.types.LiveConnectConfig(
                             "query": {
                                 "type": "string",
                                 "description": (
-                                    "The text query that is used to query vector database"
+                                    "The text query that is used to query vector database."
+                                    "Only in english. Concise but enough text to have good query."
+                                    "Example: Client Elisa: budget of the project."
+                                    "Example: Elisa backend hire decision capacity requirements"
                                 ),
                             },
                             "thinking_context": {
@@ -90,7 +94,16 @@ CONFIG = genai.types.LiveConnectConfig(
 )
 
 
-class GeminiLiveSession:  # pylint: disable=too-many-instance-attributes
+def amplify_chunk(pcm_chunk: bytes, gain: float = 2.0) -> bytes:
+    samples = np.frombuffer(pcm_chunk, dtype=np.int16).copy()
+
+    # Amplify with clipping to avoid overflow
+    samples = np.clip(samples * gain, -32768, 32767).astype(np.int16)
+
+    return samples.tobytes()
+
+
+class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
     def __init__(self, ws):
         self.ws = ws
         self._audio_queue: asyncio.Queue = asyncio.Queue(maxsize=10)
@@ -121,6 +134,7 @@ class GeminiLiveSession:  # pylint: disable=too-many-instance-attributes
 
     def push_audio(self, chunk: bytes):
         try:
+            chunk = amplify_chunk(chunk, gain=45.0)
             self._audio_queue.put_nowait(chunk)
         except asyncio.QueueFull:
             self._log_dropped_audio_if_needed()
