@@ -12,8 +12,9 @@ import db_utils
 import db
 
 
-# pylint: disable=invalid-name global-statement
 gemini_live = None
+latest_calendar_context = None
+selected_category_id = None
 
 
 @asynccontextmanager
@@ -32,26 +33,28 @@ async def audio_ws(ws: WebSocket):
     await ws.accept()
     await ws.send_json({"type": "control", "cmd": "ready"})
     try:
-        while True:
-            msg = await ws.receive()
-            if msg["type"] == "websocket.disconnect":
-                break
-            if msg["type"] == "websocket.receive":
-                if "bytes" in msg:  # audio tulee binäärinä
-                    if not gemini_live:
-                        await ws.send_json(
-                            {"type": "error", "message": "Gemini Live not started"}
-                        )
-                        print("Received audio chunk but Gemini Live not started")
-                        continue
-                    gemini_live.push_audio(msg["bytes"])
-                elif "text" in msg:  # kaikki muu kuin audio tulee tekstinä
-                    await handle_text(msg["text"], ws)
+      while True:
+        msg = await ws.receive()
+        if msg["type"] == "websocket.disconnect":
+            break
+        if msg["type"] == "websocket.receive":
+            if "bytes" in msg:
+                if not gemini_live:
+                    await ws.send_json(
+                        {"type": "error", "message": "Gemini Live not started"}
+                    )
+                    print("Received audio chunk but Gemini Live not started")
+                    continue
+                gemini_live.push_audio(msg["bytes"])
+            elif "text" in msg:
+                await handle_text(msg["text"], ws)
     finally:
         await stop_gemini_live()
 
 
 async def handle_text(text: str, ws: WebSocket):
+    global latest_calendar_context, selected_category_id
+
     try:
         payload = json.loads(text)
     except json.JSONDecodeError:
@@ -81,6 +84,19 @@ async def handle_text(text: str, ws: WebSocket):
             await ws.send_json({"type": "error", "message": "Unknown command"})
             print(f"Unknown command: {cmd}")
             return
+
+    elif payload["type"] == "calendar_context":
+        latest_calendar_context = payload.get("data")
+        print(f"Received calendar context: {latest_calendar_context}")
+        await ws.send_json({"type": "control", "cmd": "calendar_context_received"})
+        return
+
+    elif payload["type"] == "selected_category":
+        selected_category_id = payload.get("category_id")
+        print(f"Received selected category id: {selected_category_id}")
+        await ws.send_json({"type": "control", "cmd": "selected_category_received"})
+        return
+
     else:
         await ws.send_json({"type": "error", "message": "Unknown message type"})
         print(f"Unknown message type: {payload['type']}")
@@ -106,7 +122,10 @@ async def stop_gemini_live():
         transcript = transcript.strip()
         if transcript:
             asyncio.create_task(
-                extract_and_save_information_to_database(transcript)
+                extract_and_save_information_to_database(
+                    transcript,
+                    cat_id=selected_category_id,
+                )
             )
 
     gemini_live = None
@@ -227,6 +246,24 @@ def create_category(name: str):
     except IntegrityError as e:
         raise HTTPException(409, "Category already exists") from e
     return {"id": cat.id, "name": cat.name}
+
+
+@app.post("/update/conversation/category")
+def update_conversation_category(conv_id: int, cat_id: int):
+    try:
+        conv = db_utils.update_conversation_category(conv_id=conv_id, cat_id=cat_id)
+    except IntegrityError as e:
+        raise HTTPException(409, "Foreign key constraint failed") from e
+    except Exception as e:
+        raise HTTPException(404, f"Conversation or category not found: {e}") from e
+
+    return {
+        "id": conv.id,
+        "name": conv.name,
+        "summary": conv.summary,
+        "category_id": conv.category_id,
+        "timestamp": conv.timestamp.isoformat(),
+    }
 
 
 @app.post("/create/tables")

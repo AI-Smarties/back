@@ -20,7 +20,7 @@ client = genai.Client(vertexai=True, project=project, location="europe-north1")
 system_prompt = """
 You extract facts from meeting transcripts that would cause real problems if forgotten.
 
-SAVE: deadlines, decisions, scope changes, budget figures, named responsibilities, technical blockers
+SAVE: deadlines, decisions, scope changes, budget figures, named responsibilities, technical blockers, date and time of next meeting
 SKIP: how a decision was reached, confirmations of things already stated, small talk, food, office logistics, parking
 
 For "name": create a short descriptive title that captures the key topic of the conversation.
@@ -88,6 +88,7 @@ async def extract_and_save_information_to_database(
     transcript,
     conversation_id=None,
     name=None,
+    cat_id=None,
 ):
     """
     Extract information from transcript with AI model and store it to database.
@@ -98,11 +99,12 @@ async def extract_and_save_information_to_database(
         transcript: str
         conversation_id: int | None
         name: str | None
+        cat_id: int | None
     """
     transcript = transcript.strip()
     if not transcript:
-        print("Transcript empty, skipping extraction and summary generation")
-        return
+      print("Transcript empty, skipping extraction and summary generation")
+      return
 
     print("extracting information from transcript")
 
@@ -126,13 +128,14 @@ async def extract_and_save_information_to_database(
                 vectors=extracted_vectors,
                 conversation_id=conversation_id,
                 name=extracted_name or _default_conversation_name(transcript),
+                cat_id=cat_id,
             ),
         )
     except Exception as e:
         print(f"store_data failed: {e}")
 
 
-def store_data(transcript, vectors, name=None, conversation_id=None):
+def store_data(transcript, vectors, name=None, conversation_id=None, cat_id=None):
     """
     Persist conversation, vectors, and summary.
 
@@ -145,6 +148,7 @@ def store_data(transcript, vectors, name=None, conversation_id=None):
         conv_id = create_conversation(
             name=name or _default_conversation_name(transcript),
             summary=None,
+            cat_id=cat_id,
             timestamp=datetime.now(ZoneInfo("Europe/Helsinki")),
         ).id
 
@@ -166,5 +170,6 @@ def store_data(transcript, vectors, name=None, conversation_id=None):
 
     print(f"conversation: {conv.id} {conv.name}")
     print(f"summary: {conv.summary}")
+    print(f"category_id: {conv.category_id}")
     for v in saved_vectors:
         print(f"  vector {v.id}: {v.text}")
