@@ -134,7 +134,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
 
     def push_audio(self, chunk: bytes):
         try:
-            chunk = amplify_chunk(chunk, gain=45.0)
+            chunk = amplify_chunk(chunk, gain=35.0)
             self._audio_queue.put_nowait(chunk)
         except asyncio.QueueFull:
             self._log_dropped_audio_if_needed()
