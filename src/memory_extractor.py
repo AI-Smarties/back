@@ -25,7 +25,7 @@ def get_client():
         CLIENT = genai.Client(
             vertexai=True,
             project=project,
-            location="europe-north1",
+            location="global",
         )
     return CLIENT
 
@@ -35,10 +35,21 @@ You extract facts from meeting transcripts that would cause real problems if for
 SAVE: deadlines, decisions, scope changes, budget figures, named responsibilities, technical blockers
 SKIP: how a decision was reached, confirmations of things already stated, small talk, food, office logistics, parking
 
-For "name": create a short descriptive title that captures the key topic of the conversation.
-A fact is worth saving only if forgetting it in 3 months would cause a mistake.
-Do not save process steps (e.g. "escalation initiated"), save the outcome (e.g. "Lisa approved backend hire").
-Do not save the same fact twice with different wording.
+Rules:
+- Only save facts explicitly stated in the transcript. Never infer, assume, or fill in details not directly mentioned — especially numbers, names, and dates.
+- Save only if forgetting in 3 months would cause a real mistake.
+- Save outcomes, not process steps. Good: "Client Elisa approved a backend hire — team lacked capacity to meet current backend requirements." Bad: "Hiring process initiated."
+- One atomic fact per vector. Do not combine multiple facts into one entry.
+- Always store in English, regardless of the language of the transcript.
+- Each fact must be self-contained: include who decided it and in what context.
+  Bad: "Priority 1: meeting summary feature."
+  Good: "Client Elisa set meeting summary as Priority 1 — save conversation summaries to the database and auto-share to Google Drive."
+- Phrase for retrieval: include the actor, subject, and key detail so a semantic search for any of them finds the fact.
+- Avoid generic statements. If a fact would be true of any similar project, add specifics that make it unique to this one.
+- Do not save the same fact twice with different wording within this transcript.
+- If there is nothing worth saving, return an empty vectors array. Never store meta-comments about the transcript itself (e.g. "no facts found", "transcript lacks content").
+
+For "name": create a short English title capturing the key topic (e.g. "Elisa client meeting - March 2026").
 """
 
 
@@ -69,7 +80,7 @@ async def memory_extractor_worker(transcript):
     """
     client = get_client()
     response = await client.aio.models.generate_content(
-        model="gemini-2.5-flash-lite",
+        model="gemini-3.1-flash-lite-preview",
         contents=transcript,
         config=genai.types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
@@ -132,6 +143,10 @@ async def extract_and_save_information_to_database(
             print(json.dumps(information_vectors, indent=2))
     except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"memory_extractor_worker failed: {e}")
+
+    if not extracted_vectors:
+        print("No vectors extracted, skipping store")
+        return
 
     try:
         await asyncio.get_event_loop().run_in_executor(
