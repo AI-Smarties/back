@@ -1,15 +1,31 @@
+from contextlib import asynccontextmanager
 from datetime import datetime
+import asyncio
 import json
+
 from fastapi import FastAPI, WebSocket, HTTPException
 from sqlalchemy.exc import IntegrityError
+
 from gemini_live import GeminiLiveSession
+from memory_extractor import extract_and_save_information_to_database
 import db_utils
 import db
 
 
-# pylint: disable=invalid-name global-statement
-app = FastAPI()
-gemini_live = None
+GEMINI_LIVE = None
+LATEST_CALENDAR_CONTEXT = None
+SELECTED_CATEGORY_ID = None
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Create database tables automatically when the app starts."""
+    print("Creating database tables on startup (if missing)")
+    db.create_tables()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.websocket("/ws/")
@@ -22,64 +38,105 @@ async def audio_ws(ws: WebSocket):
             if msg["type"] == "websocket.disconnect":
                 break
             if msg["type"] == "websocket.receive":
-                if "bytes" in msg:  # audio tulee binäärinä
-                    if not gemini_live:
-                        await ws.send_json({"type": "error", "message": "Gemini Live not started"})
+                if "bytes" in msg:
+                    if not GEMINI_LIVE:
+                        await ws.send_json(
+                            {"type": "error", "message": "Gemini Live not started"}
+                        )
                         print("Received audio chunk but Gemini Live not started")
                         continue
-                    gemini_live.push_audio(msg["bytes"])
-                elif "text" in msg:  # kaikki muu kuin audio tulee tekstinä
+                    GEMINI_LIVE.push_audio(msg["bytes"])
+                elif "text" in msg:
                     await handle_text(msg["text"], ws)
     finally:
         await stop_gemini_live()
 
 
-async def handle_text(text: str, ws: WebSocket):
+async def handle_text(  # pylint: disable=too-many-return-statements
+    text: str,
+    ws: WebSocket,
+):
+    global LATEST_CALENDAR_CONTEXT, SELECTED_CATEGORY_ID  # pylint: disable=global-statement
+
     try:
         payload = json.loads(text)
     except json.JSONDecodeError:
         await ws.send_json({"type": "error", "message": "Invalid JSON"})
         print(f"Invalid JSON: {text}")
         return
-    if "type" not in payload:
+
+    payload_type = payload.get("type")
+    if payload_type is None:
         await ws.send_json({"type": "error", "message": "Missing type in message"})
         print(f"Missing type in message: {payload}")
         return
-    if payload["type"] == "control":
-        if "cmd" not in payload:
-            await ws.send_json({"type": "error", "message": "Missing command in control message"})
+
+    if payload_type == "control":
+        cmd = payload.get("cmd")
+        if cmd is None:
+            await ws.send_json(
+                {"type": "error", "message": "Missing command in control message"}
+            )
             print(f"Missing command in control message: {payload}")
             return
-        cmd = payload["cmd"]
+
         if cmd == "start":
             await start_gemini_live(ws)
-        elif cmd == "stop":
-            await stop_gemini_live()
-        else:
-            await ws.send_json({"type": "error", "message": "Unknown command"})
-            print(f"Unknown command: {cmd}")
             return
-    else:
-        await ws.send_json({"type": "error", "message": "Unknown message type"})
-        print(f"Unknown message type: {payload['type']}")
+        if cmd == "stop":
+            await stop_gemini_live()
+            return
+
+        await ws.send_json({"type": "error", "message": "Unknown command"})
+        print(f"Unknown command: {cmd}")
         return
+
+    if payload_type == "calendar_context":
+        LATEST_CALENDAR_CONTEXT = payload.get("data")
+        print(f"Received calendar context: {LATEST_CALENDAR_CONTEXT}")
+        await ws.send_json(
+            {"type": "control", "cmd": "calendar_context_received"}
+        )
+        return
+
+    if payload_type == "selected_category":
+        SELECTED_CATEGORY_ID = payload.get("category_id")
+        print(f"Received selected category id: {SELECTED_CATEGORY_ID}")
+        await ws.send_json(
+            {"type": "control", "cmd": "selected_category_received"}
+        )
+        return
+
+    await ws.send_json({"type": "error", "message": "Unknown message type"})
+    print(f"Unknown message type: {payload_type}")
 
 
 async def start_gemini_live(ws: WebSocket):
-    global gemini_live
+    global GEMINI_LIVE  # pylint: disable=global-statement
     print("Starting Gemini Live")
-    if gemini_live:
-        await gemini_live.stop()
-    gemini_live = GeminiLiveSession(ws)
-    await gemini_live.start()
+    if GEMINI_LIVE:
+        await GEMINI_LIVE.stop()
+    GEMINI_LIVE = GeminiLiveSession(ws)
+    await GEMINI_LIVE.start()
 
 
 async def stop_gemini_live():
-    global gemini_live
+    global GEMINI_LIVE  # pylint: disable=global-statement
     print("Stopping Gemini Live")
-    if gemini_live:
-        await gemini_live.stop()
-    gemini_live = None
+    if GEMINI_LIVE:
+        transcript = await GEMINI_LIVE.stop()
+        print(transcript)
+
+        transcript = transcript.strip()
+        if transcript:
+            asyncio.create_task(
+                extract_and_save_information_to_database(
+                    transcript,
+                    cat_id=SELECTED_CATEGORY_ID,
+                )
+            )
+
+    GEMINI_LIVE = None
 
 
 @app.get("/get/vectors")
@@ -88,16 +145,22 @@ def get_vectors(vec_id: int = None, conv_id: int = None):
         vec = db_utils.get_vector_by_id(vec_id)
         if vec is None:
             return []
-        return [{"id": vec.id, "text": vec.text, "conversation_id": vec.conversation_id}]
+        return [{
+            "id": vec.id,
+            "text": vec.text,
+            "conversation_id": vec.conversation_id,
+        }]
+
     if conv_id is not None:
         vecs = db_utils.get_vectors_by_conversation_id(conv_id)
     else:
         vecs = db_utils.get_vectors()
+
     return [{
         "id": vec.id,
         "text": vec.text,
         "conversation_id": vec.conversation_id,
-        } for vec in vecs]
+    } for vec in vecs]
 
 
 @app.get("/get/conversations")
@@ -113,10 +176,12 @@ def get_conversations(conv_id: int = None, cat_id: int = None):
             "category_id": conv.category_id,
             "timestamp": conv.timestamp.isoformat(),
         }]
+
     if cat_id is not None:
         convs = db_utils.get_conversations_by_category_id(cat_id)
     else:
         convs = db_utils.get_conversations()
+
     return [{
         "id": conv.id,
         "name": conv.name,
@@ -136,8 +201,10 @@ def get_categories(cat_id: int = None, name: str = None):
     else:
         cats = db_utils.get_categories()
         return [{"id": cat.id, "name": cat.name} for cat in cats]
+
     if cat is None:
         return []
+
     return [{"id": cat.id, "name": cat.name}]
 
 
@@ -152,7 +219,12 @@ def create_vector(text: str, conv_id: int):
 
 
 @app.post("/create/conversation")
-def create_conversation(name: str, summary: str = None, cat_id: int = None, timestamp: str = None):
+def create_conversation(
+    name: str,
+    summary: str = None,
+    cat_id: int = None,
+    timestamp: str = None,
+):
     name = name.strip()
     summary = summary.strip() if summary else None
     timestamp = datetime.fromisoformat(timestamp.strip()) if timestamp else None
@@ -182,6 +254,24 @@ def create_category(name: str):
     except IntegrityError as e:
         raise HTTPException(409, "Category already exists") from e
     return {"id": cat.id, "name": cat.name}
+
+
+@app.post("/update/conversation/category")
+def update_conversation_category(conv_id: int, cat_id: int):
+    try:
+        conv = db_utils.update_conversation_category(conv_id=conv_id, cat_id=cat_id)
+    except IntegrityError as e:
+        raise HTTPException(409, "Foreign key constraint failed") from e
+    except (LookupError, ValueError) as e:
+        raise HTTPException(404, f"Conversation or category not found: {e}") from e
+
+    return {
+        "id": conv.id,
+        "name": conv.name,
+        "summary": conv.summary,
+        "category_id": conv.category_id,
+        "timestamp": conv.timestamp.isoformat(),
+    }
 
 
 @app.post("/create/tables")
