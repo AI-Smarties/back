@@ -47,7 +47,7 @@ class StreamingASR:
             return
         asyncio.run_coroutine_threadsafe(self.ws.send_json(data), self.loop)
 
-    def _worker(self):
+    def _worker(self):  # pylint: disable=too-many-branches
         while not self.stopped:
             # Each stream iteration gets its own queue reference. On restart we
             # swap _current_q so push_audio feeds the new stream, then send None
@@ -58,7 +58,8 @@ class StreamingASR:
                     _, project = auth.default()
                     if not project:
                         raise RuntimeError(
-                            "Could not determine GCP project id from Application Default Credentials."
+                            "Could not determine GCP project id from Application Default "
+                            "Credentials."
                         )
                     recognizer = self.client.recognizer_path(project, "eu", "_")
 
@@ -92,13 +93,16 @@ class StreamingASR:
 
                 responses = self.client.streaming_recognize(requests=request_gen())
                 for response in responses:
-                    with open('./scripts/response.txt', 'a') as file:
+                    with open('./scripts/response.txt', 'a') as file:  # pylint: disable=unspecified-encoding
                         file.write(str(response) + "\n")
 
                     # Restart the stream when GCP signals end of voice activity.
                     # chirp_3 stops responding after an utterance ends so we must
                     # open a fresh stream to pick up the next one.
-                    if response.speech_event_type == cloud_speech.StreamingRecognizeResponse.SpeechEventType.SPEECH_ACTIVITY_END:
+                    speech_activity_end = (
+                        cloud_speech.StreamingRecognizeResponse.SpeechEventType.SPEECH_ACTIVITY_END
+                    )
+                    if response.speech_event_type == speech_activity_end:
                         print("[ASR] speech activity ended, restarting stream...")
                         raise _RestartStream()
 
@@ -120,7 +124,7 @@ class StreamingASR:
             except _RestartStream:
                 if self.stopped:
                     break
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 if self.stopped:
                     break
                 print(f"[ASR] stream error, restarting... {e}")
