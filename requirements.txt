@@ -12,4 +12,6 @@ pgvector
 
 vertexai
 google-genai
+google-cloud-speech
+
 tzdata
