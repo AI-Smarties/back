@@ -6,13 +6,13 @@ import json
 from fastapi import FastAPI, WebSocket, HTTPException
 from sqlalchemy.exc import IntegrityError
 
-from gemini_live import GeminiLiveSession
+from asr import StreamingASR
 from memory_extractor import extract_and_save_information_to_database
 import db_utils
 import db
 
 
-GEMINI_LIVE = None
+ASR = None
 LATEST_CALENDAR_CONTEXT = None
 SELECTED_CATEGORY_ID = None
 
@@ -39,17 +39,17 @@ async def audio_ws(ws: WebSocket):
                 break
             if msg["type"] == "websocket.receive":
                 if "bytes" in msg:
-                    if not GEMINI_LIVE:
+                    if not ASR:
                         await ws.send_json(
-                            {"type": "error", "message": "Gemini Live not started"}
+                            {"type": "error", "message": "ASR not started"}
                         )
-                        print("Received audio chunk but Gemini Live not started")
+                        print("Received audio chunk but ASR not started")
                         continue
-                    GEMINI_LIVE.push_audio(msg["bytes"])
+                    ASR.push_audio(msg["bytes"])
                 elif "text" in msg:
                     await handle_text(msg["text"], ws)
     finally:
-        await stop_gemini_live()
+        stop_asr()
 
 
 async def handle_text(  # pylint: disable=too-many-return-statements
@@ -81,10 +81,10 @@ async def handle_text(  # pylint: disable=too-many-return-statements
             return
 
         if cmd == "start":
-            await start_gemini_live(ws)
+            start_asr(ws)
             return
         if cmd == "stop":
-            await stop_gemini_live()
+            stop_asr()
             return
 
         await ws.send_json({"type": "error", "message": "Unknown command"})
@@ -111,23 +111,20 @@ async def handle_text(  # pylint: disable=too-many-return-statements
     print(f"Unknown message type: {payload_type}")
 
 
-async def start_gemini_live(ws: WebSocket):
-    global GEMINI_LIVE  # pylint: disable=global-statement
-    print("Starting Gemini Live")
-    if GEMINI_LIVE:
-        await GEMINI_LIVE.stop()
-    GEMINI_LIVE = GeminiLiveSession(ws)
-    await GEMINI_LIVE.start()
+def start_asr(ws: WebSocket):
+    global ASR  # pylint: disable=global-statement
+    print("Starting ASR")
+    if ASR:
+        ASR.stop()
+    ASR = StreamingASR(ws)
+    ASR.start()
 
 
-async def stop_gemini_live():
-    global GEMINI_LIVE  # pylint: disable=global-statement
-    print("Stopping Gemini Live")
-    if GEMINI_LIVE:
-        transcript = await GEMINI_LIVE.stop()
-        print(transcript)
-
-        transcript = transcript.strip()
+def stop_asr():
+    global ASR  # pylint: disable=global-statement
+    print("Stopping ASR")
+    if ASR:
+        transcript = ASR.stop()
         if transcript:
             asyncio.create_task(
                 extract_and_save_information_to_database(
@@ -135,8 +132,7 @@ async def stop_gemini_live():
                     cat_id=SELECTED_CATEGORY_ID,
                 )
             )
-
-    GEMINI_LIVE = None
+    ASR = None
 
 
 @app.get("/get/vectors")

@@ -17,7 +17,7 @@ class StreamingASR:
         self.ws = ws
         self.testing = testing
         self._current_q = queue.Queue()
-        self.final_buffer = ""
+        self.transcript = ""
         self.stopped = False
         if self.testing:
             self.client = client
@@ -26,12 +26,15 @@ class StreamingASR:
                 api_endpoint="eu-speech.googleapis.com",
             ))
             self.worker = threading.Thread(target=self._worker, daemon=True)
-            self.worker.start()
             self.loop = asyncio.get_running_loop()
+
+    def start(self):
+        self.worker.start()
 
     def stop(self):
         self._current_q.put(None)
         self.stopped = True
+        return self.transcript.strip()
 
     def push_audio(self, chunk: bytes):
         if self.stopped:
@@ -110,8 +113,8 @@ class StreamingASR:
                                 text = text[0].upper() + text[1:]
                                 if text[-1] not in ".!?":
                                     text += "."
-                            self.final_buffer += text + " "
-                            payload = {"status": "final", "text": self.final_buffer.strip()}
+                            self.transcript += text + " "
+                            payload = {"status": "final", "text": self.transcript.strip()}
                         self._dispatch({"type": "transcript", "data": payload})
 
             except _RestartStream:
