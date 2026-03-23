@@ -2,9 +2,7 @@ import threading
 import queue
 import asyncio
 from google import auth
-from google.cloud.speech_v2 import SpeechClient
 from google.cloud.speech_v2.types import cloud_speech
-from google.api_core.client_options import ClientOptions
 
 
 class _RestartStream(Exception):
@@ -13,38 +11,29 @@ class _RestartStream(Exception):
 
 # pylint: disable=too-many-instance-attributes
 class StreamingASR:
-    def __init__(self, ws, testing=False, client=None):
+    def __init__(self, ws, client, loop=None):
         self.ws = ws
-        self.testing = testing
-        self._current_q = queue.Queue()
+        self.current_q = queue.Queue()
         self.transcript = ""
         self.stopped = False
-        if self.testing:
-            self.client = client
-        else:
-            self.client = SpeechClient(client_options=ClientOptions(
-                api_endpoint="eu-speech.googleapis.com",
-            ))
-            self.worker = threading.Thread(target=self._worker, daemon=True)
-            self.loop = asyncio.get_running_loop()
+        self.client = client
+        self.loop = loop or asyncio.get_running_loop()
+        self.worker = threading.Thread(target=self._worker, daemon=True)
 
     def start(self):
         self.worker.start()
 
     def stop(self):
-        self._current_q.put(None)
+        self.current_q.put(None)
         self.stopped = True
         return self.transcript.strip()
 
     def push_audio(self, chunk: bytes):
         if self.stopped:
             raise RuntimeError("Cannot push audio after ASR is stopped")
-        self._current_q.put(chunk)
+        self.current_q.put(chunk)
 
     def _dispatch(self, data):
-        if self.testing:
-            self.ws.send_json(data)
-            return
         asyncio.run_coroutine_threadsafe(self.ws.send_json(data), self.loop)
 
     def _worker(self):  # pylint: disable=too-many-branches
@@ -52,7 +41,7 @@ class StreamingASR:
             # Each stream iteration gets its own queue reference. On restart we
             # swap _current_q so push_audio feeds the new stream, then send None
             # to the old queue to unblock the zombie generator in the gRPC thread.
-            my_q = self._current_q
+            my_q = self.current_q
             try:
                 def request_gen():
                     _, project = auth.default()
@@ -132,5 +121,5 @@ class StreamingASR:
             # Rotate queue: give push_audio a fresh queue for the next stream and
             # send None to the old one so the zombie generator unblocks and exits.
             old_q = my_q
-            self._current_q = queue.Queue()
+            self.current_q = queue.Queue()
             old_q.put(None)
