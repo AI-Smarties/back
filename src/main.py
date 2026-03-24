@@ -11,6 +11,7 @@ from memory_extractor import extract_and_save_information_to_database
 import db_utils
 import db
 
+from context_service import build_context
 
 GEMINI_LIVE = None
 LATEST_CALENDAR_CONTEXT = None
@@ -93,6 +94,26 @@ async def handle_text(  # pylint: disable=too-many-return-statements
 
     if payload_type == "calendar_context":
         LATEST_CALENDAR_CONTEXT = payload.get("data")
+
+        if not isinstance(LATEST_CALENDAR_CONTEXT, dict):
+            await ws.send_json(
+                {"type": "error", "message": "Calendar context data must be a dictionary"}
+            )
+            print(f"Calendar context data is not a dictionary: {LATEST_CALENDAR_CONTEXT}")
+            return
+
+        if ('title' not in LATEST_CALENDAR_CONTEXT or 
+            'start' not in LATEST_CALENDAR_CONTEXT or
+            'end' not in LATEST_CALENDAR_CONTEXT or
+            'description' not in LATEST_CALENDAR_CONTEXT):
+            await ws.send_json(
+                {"type": "error", "message": "Invalid calendar context format"}
+            )
+            print(f"Invalid calendar context format: {LATEST_CALENDAR_CONTEXT}")
+            return
+
+        LATEST_CALENDAR_CONTEXT = build_context(LATEST_CALENDAR_CONTEXT)
+
         print(f"Received calendar context: {LATEST_CALENDAR_CONTEXT}")
         await ws.send_json(
             {"type": "control", "cmd": "calendar_context_received"}
