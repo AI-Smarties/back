@@ -12,9 +12,6 @@ import db_utils
 import db
 
 
-GEMINI_LIVE = None
-LATEST_CALENDAR_CONTEXT = None
-SELECTED_CATEGORY_ID = None
 
 
 @asynccontextmanager
@@ -30,6 +27,9 @@ app = FastAPI(lifespan=lifespan)
 
 @app.websocket("/ws/")
 async def audio_ws(ws: WebSocket):
+    ws.state.GEMINI_LIVE = None
+    ws.state.LATEST_CALENDAR_CONTENT = None
+    ws.state.SELECTED_CATEGORY_ID = None
     await ws.accept()
     await ws.send_json({"type": "control", "cmd": "ready"})
     try:
@@ -39,24 +39,25 @@ async def audio_ws(ws: WebSocket):
                 break
             if msg["type"] == "websocket.receive":
                 if "bytes" in msg:
-                    if not GEMINI_LIVE:
+                    if not ws.state.GEMINI_LIVE:
                         await ws.send_json(
                             {"type": "error", "message": "Gemini Live not started"}
                         )
                         print("Received audio chunk but Gemini Live not started")
                         continue
-                    GEMINI_LIVE.push_audio(msg["bytes"])
+                    ws.state.GEMINI_LIVE.push_audio(msg["bytes"])
                 elif "text" in msg:
                     await handle_text(msg["text"], ws)
     finally:
-        await stop_gemini_live()
+        await stop_gemini_live(ws)
+        ws.state.GEMINI_LIVE = None
+
 
 
 async def handle_text(  # pylint: disable=too-many-return-statements
     text: str,
     ws: WebSocket,
 ):
-    global LATEST_CALENDAR_CONTEXT, SELECTED_CATEGORY_ID  # pylint: disable=global-statement
 
     try:
         payload = json.loads(text)
@@ -84,7 +85,7 @@ async def handle_text(  # pylint: disable=too-many-return-statements
             await start_gemini_live(ws)
             return
         if cmd == "stop":
-            await stop_gemini_live()
+            await stop_gemini_live(ws)
             return
 
         await ws.send_json({"type": "error", "message": "Unknown command"})
@@ -92,16 +93,18 @@ async def handle_text(  # pylint: disable=too-many-return-statements
         return
 
     if payload_type == "calendar_context":
-        LATEST_CALENDAR_CONTEXT = payload.get("data")
-        print(f"Received calendar context: {LATEST_CALENDAR_CONTEXT}")
+        _calendar_content = payload.get("data")
+        ws.state.LATEST_CALENDAR_CONTENT = _calendar_content
+        print(f"Received calendar context: {_calendar_content}")
         await ws.send_json(
             {"type": "control", "cmd": "calendar_context_received"}
         )
         return
 
     if payload_type == "selected_category":
-        SELECTED_CATEGORY_ID = payload.get("category_id")
-        print(f"Received selected category id: {SELECTED_CATEGORY_ID}")
+        _category_id = payload.get("category_id")
+        ws.state.SELECTED_CATEGORY_ID = _category_id
+        print(f"Received selected category id: {_category_id}")
         await ws.send_json(
             {"type": "control", "cmd": "selected_category_received"}
         )
@@ -112,19 +115,18 @@ async def handle_text(  # pylint: disable=too-many-return-statements
 
 
 async def start_gemini_live(ws: WebSocket):
-    global GEMINI_LIVE  # pylint: disable=global-statement
     print("Starting Gemini Live")
-    if GEMINI_LIVE:
-        await GEMINI_LIVE.stop()
-    GEMINI_LIVE = GeminiLiveSession(ws)
-    await GEMINI_LIVE.start()
+    if not ws.state.GEMINI_LIVE:
+        ws.state.GEMINI_LIVE = GeminiLiveSession(ws)
+
+    if not ws.state.GEMINI_LIVE.running:
+        await ws.state.GEMINI_LIVE.start()
 
 
-async def stop_gemini_live():
-    global GEMINI_LIVE  # pylint: disable=global-statement
-    print("Stopping Gemini Live")
-    if GEMINI_LIVE:
-        transcript = await GEMINI_LIVE.stop()
+async def stop_gemini_live(ws: WebSocket):
+    if ws.state.GEMINI_LIVE and ws.state.GEMINI_LIVE.running:
+        print("Stopping Gemini Live")
+        transcript = await ws.state.GEMINI_LIVE.stop()
         print(transcript)
 
         transcript = transcript.strip()
@@ -132,11 +134,10 @@ async def stop_gemini_live():
             asyncio.create_task(
                 extract_and_save_information_to_database(
                     transcript,
-                    cat_id=SELECTED_CATEGORY_ID,
+                    cat_id=ws.state.SELECTED_CATEGORY_ID,
                 )
             )
 
-    GEMINI_LIVE = None
 
 
 @app.get("/get/vectors")
