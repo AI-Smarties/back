@@ -55,4 +55,4 @@ def test_server_handles_audio_before_start():
         websocket.send_bytes(b"audio chunk")
         data = websocket.receive_json()
         assert data["type"] == "error"
-        assert data["message"] == "Gemini Live not started"
+        assert data["message"] == "ASR not started"
