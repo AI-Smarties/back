@@ -134,7 +134,6 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
             self._last_drop_log_time = now
 
     def push_data(self, chunk):
-        print(f"push_data called with chunk: {chunk}")
         try:
             if self.text:
                 self.transcript += chunk + " "
