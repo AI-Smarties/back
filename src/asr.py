@@ -62,10 +62,13 @@ class StreamingASR:
                                 audio_channel_count=1,
                             ),
                             language_codes=["fi-FI"],
-                            model='chirp_3'
+                            model='chirp_3',
+                            features=cloud_speech.RecognitionFeatures(
+                                enable_automatic_punctuation=True,
+                            ),
                         ),
                         streaming_features=cloud_speech.StreamingRecognitionFeatures(
-                            interim_results=True,
+                            interim_results=False,
                             enable_voice_activity_events=True,
                         ),
                     )
@@ -90,14 +93,11 @@ class StreamingASR:
                             continue
                         text = result.alternatives[0].transcript.strip()
                         if not result.is_final:
-                            print(f"[ASR] partial transcript: {text}")
-                        else:
-                            if text:
-                                text = text[0].upper() + text[1:]
-                                if text[-1] not in ".!?":
-                                    text += "."
-                            self.transcript += text + " "
-                            self._dispatch(text)
+                            raise RuntimeError(
+                                "Received non-final result, but interim results are disabled"
+                            )
+                        self.transcript += text + " "
+                        self._dispatch(text)
 
                     # Restart the stream when GCP signals end of voice activity.
                     # chirp_3 stops responding after an utterance ends so we must
