@@ -31,7 +31,6 @@ class StreamingASR:
     def push_audio(self, chunk: bytes):
         if self.stopped:
             raise RuntimeError("Cannot push audio after ASR is stopped")
-        chunk = amplify_chunk(chunk, gain=35.0)
         self.current_q.put(chunk)
 
     def _dispatch(self, text):
@@ -79,6 +78,7 @@ class StreamingASR:
                         if chunk is None:
                             print('[ASR] stream closed')
                             break
+                        chunk = amplify_chunk(chunk, gain=35.0)
                         yield cloud_speech.StreamingRecognizeRequest(audio=chunk)
 
                 responses = self.client.streaming_recognize(requests=request_gen())
