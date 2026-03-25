@@ -49,7 +49,7 @@ async def audio_ws(ws: WebSocket):
                         print("Received audio chunk but ASR not started")
                         continue
                     ASR.push_audio(msg["bytes"])
-                elif "text" in msg:
+                if "text" in msg:
                     await handle_text(msg["text"], ws)
     finally:
         # The client may already be disconnected; don't attempt to send confirmation
