@@ -104,10 +104,11 @@ def amplify_chunk(pcm_chunk: bytes, gain: float = 2.0) -> bytes:
 
 
 class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
-    def __init__(self, ws, text: bool = False):
+    def __init__(self, ws, loop = None, text: bool = False):
         self.ws = ws
         self.text = text
         self._queue: asyncio.Queue = asyncio.Queue(maxsize=10)
+        self._loop = loop or asyncio.get_event_loop()
         self._task: asyncio.Task | None = None
         self.tokens_used = 0
         self.transcript: str = ""
@@ -133,22 +134,25 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
             self._dropped_packets = 0
             self._last_drop_log_time = now
 
-    def push_data(self, chunk):
+    def _enqueue_chunk_nowait(self, chunk):
         try:
-            if self.text:
-                self.transcript += chunk + " "
-            else:
-                chunk = amplify_chunk(chunk, gain=35.0)
             self._queue.put_nowait(chunk)
         except asyncio.QueueFull:
             self._log_dropped_packet_if_needed()
             self._queue.get_nowait()
             self._queue.put_nowait(chunk)
 
-    def stop(self) -> str:
-        self._running = False
+    def push_data(self, chunk):
+        if self.text:
+            self.transcript += chunk + " "
+        else:
+            chunk = amplify_chunk(chunk, gain=35.0)
+        try:
+            self._loop.call_soon_threadsafe(self._enqueue_chunk_nowait, chunk)
+        except RuntimeError:
+            self._enqueue_chunk_nowait(chunk)
 
-        # Request graceful shutdown: _send() and _run() both exit when they read None.
+    def _request_shutdown(self):
         try:
             self._queue.put_nowait(None)
         except asyncio.QueueFull:
@@ -160,6 +164,15 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
                 self._queue.put_nowait(None)
             except asyncio.QueueFull:
                 pass
+
+    def stop(self) -> str:
+        self._running = False
+
+        # Request graceful shutdown: _send() and _run() both exit when they read None.
+        try:
+            self._loop.call_soon_threadsafe(self._request_shutdown)
+        except RuntimeError:
+            self._request_shutdown()
 
         if self._task:
             self._task.add_done_callback(
