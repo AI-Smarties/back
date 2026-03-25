@@ -118,7 +118,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         self._dropped_packets = 0
         self._last_drop_log_time = 0.0
 
-    async def start(self):
+    def start(self):
         self._task = asyncio.create_task(self._run())
 
     def _log_dropped_packet_if_needed(self):
@@ -145,20 +145,29 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
             self._queue.get_nowait()
             self._queue.put_nowait(chunk)
 
-    async def stop(self) -> str:
+    def stop(self) -> str:
+        self._running = False
+
+        # Request graceful shutdown: _send() and _run() both exit when they read None.
         try:
             self._queue.put_nowait(None)
         except asyncio.QueueFull:
-            pass
-        self._running = False
-        if self._task:
-            self._task.cancel()
             try:
-                await self._task
-            except (asyncio.CancelledError, Exception):  # pylint: disable=broad-exception-caught
+                self._queue.get_nowait()
+            except asyncio.QueueEmpty:
                 pass
-        print(f"session total tokens: {self.tokens_used}")
+            try:
+                self._queue.put_nowait(None)
+            except asyncio.QueueFull:
+                pass
 
+        if self._task:
+            self._task.add_done_callback(
+                lambda task: (task.exception() if not task.cancelled() else None)
+            )
+            self._task.cancel()
+
+        print(f"session total tokens: {self.tokens_used}")
         return self.transcript.strip()
 
     async def _run(self):
