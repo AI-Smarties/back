@@ -170,9 +170,11 @@ async def fetch_information(
         print(f"query: {query}\nthinking: {thinking_context}")
         print(json.dumps(query_history, indent=2))
 
-        results = await asyncio.get_event_loop().run_in_executor(
-            None,
-            lambda: search_vectors(query, limit=5, max_distance=0.5),
+        results = await asyncio.to_thread(
+            search_vectors,
+            query,
+            limit=5,
+            max_distance=0.5,
         )
 
         if not results:
