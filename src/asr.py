@@ -1,6 +1,5 @@
 import threading
 import queue
-import asyncio
 from google import auth
 from google.cloud.speech_v2.types import cloud_speech
 from gemini_live import amplify_chunk
@@ -10,23 +9,23 @@ class _RestartStream(Exception):
     """Raised to break out of the response loop and restart the stream."""
 
 
-# pylint: disable=too-many-instance-attributes
 class StreamingASR:
-    def __init__(self, ws, client, loop=None):
-        self.ws = ws
+    def __init__(self, client, gemini_live):
         self.current_q = queue.Queue()
         self.transcript = ""
         self.stopped = False
         self.client = client
-        self.loop = loop or asyncio.get_running_loop()
+        self.gemini_live = gemini_live
         self.worker = threading.Thread(target=self._worker, daemon=True)
 
     def start(self):
+        self.gemini_live.start()
         self.worker.start()
 
     def stop(self):
         self.current_q.put(None)
         self.stopped = True
+        self.gemini_live.stop()
         return self.transcript.strip()
 
     def push_audio(self, chunk: bytes):
@@ -35,8 +34,8 @@ class StreamingASR:
         chunk = amplify_chunk(chunk, gain=35.0)
         self.current_q.put(chunk)
 
-    def _dispatch(self, data):
-        asyncio.run_coroutine_threadsafe(self.ws.send_json(data), self.loop)
+    def _dispatch(self, text):
+        self.gemini_live.push_data(text)
 
     def _worker(self):  # pylint: disable=too-many-branches
         while not self.stopped:

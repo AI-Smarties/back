@@ -12,6 +12,7 @@ from asr import StreamingASR
 from memory_extractor import extract_and_save_information_to_database
 import db_utils
 import db
+from gemini_live import GeminiLiveSession
 
 
 ASR = None
@@ -123,7 +124,8 @@ def start_asr(ws: WebSocket):
             api_endpoint="eu-speech.googleapis.com",
         )
     )
-    ASR = StreamingASR(ws, client=speech_client)
+    gemini_live = GeminiLiveSession(ws, text=True)
+    ASR = StreamingASR(speech_client, gemini_live)
     ASR.start()
 
 
