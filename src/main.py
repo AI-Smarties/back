@@ -52,7 +52,8 @@ async def audio_ws(ws: WebSocket):
                 elif "text" in msg:
                     await handle_text(msg["text"], ws)
     finally:
-        stop_asr(ws)
+        # The client may already be disconnected; don't attempt to send confirmation
+        await stop_asr(ws, notify=False)
 
 
 async def handle_text(  # pylint: disable=too-many-return-statements
@@ -84,10 +85,10 @@ async def handle_text(  # pylint: disable=too-many-return-statements
             return
 
         if cmd == "start":
-            start_asr(ws)
+            await start_asr(ws)
             return
         if cmd == "stop":
-            stop_asr(ws)
+            await stop_asr(ws)
             return
 
         await ws.send_json({"type": "error", "message": "Unknown command"})
@@ -114,7 +115,7 @@ async def handle_text(  # pylint: disable=too-many-return-statements
     print(f"Unknown message type: {payload_type}")
 
 
-def start_asr(ws: WebSocket):
+async def start_asr(ws: WebSocket, notify: bool = True):
     global ASR  # pylint: disable=global-statement
     print("Starting ASR")
     if ASR:
@@ -127,10 +128,12 @@ def start_asr(ws: WebSocket):
     gemini_live = GeminiLiveSession(ws, text=True)
     ASR = StreamingASR(speech_client, gemini_live)
     ASR.start()
-    ws.send_json({"type": "control", "cmd": "asr_started"})
+    if not notify:
+        return
+    await ws.send_json({"type": "control", "cmd": "asr_started"})
 
 
-def stop_asr(ws: WebSocket):
+async def stop_asr(ws: WebSocket, notify: bool = True):
     global ASR  # pylint: disable=global-statement
     print("Stopping ASR")
     if ASR:
@@ -143,7 +146,9 @@ def stop_asr(ws: WebSocket):
                 )
             )
     ASR = None
-    ws.send_json({"type": "control", "cmd": "asr_stopped"})
+    if not notify:
+        return
+    await ws.send_json({"type": "control", "cmd": "asr_stopped"})
 
 
 @app.get("/get/vectors")
