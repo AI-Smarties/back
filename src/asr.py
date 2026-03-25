@@ -3,6 +3,7 @@ import queue
 import asyncio
 from google import auth
 from google.cloud.speech_v2.types import cloud_speech
+from gemini_live import amplify_chunk
 
 
 class _RestartStream(Exception):
@@ -31,6 +32,7 @@ class StreamingASR:
     def push_audio(self, chunk: bytes):
         if self.stopped:
             raise RuntimeError("Cannot push audio after ASR is stopped")
+        chunk = amplify_chunk(chunk, gain=35.0)
         self.current_q.put(chunk)
 
     def _dispatch(self, data):
