@@ -83,16 +83,6 @@ class StreamingASR:
 
                 responses = self.client.streaming_recognize(requests=request_gen())
                 for response in responses:
-                    # Restart the stream when GCP signals end of voice activity.
-                    # chirp_3 stops responding after an utterance ends so we must
-                    # open a fresh stream to pick up the next one.
-                    speech_activity_end = (
-                        cloud_speech.StreamingRecognizeResponse.SpeechEventType.SPEECH_ACTIVITY_END
-                    )
-                    if response.speech_event_type == speech_activity_end:
-                        print("[ASR] speech activity ended, restarting stream...")
-                        raise _RestartStream()
-
                     for result in response.results:
                         if not result.alternatives:
                             continue
@@ -106,6 +96,16 @@ class StreamingASR:
                                     text += "."
                             self.transcript += text + " "
                             self._dispatch(text)
+
+                    # Restart the stream when GCP signals end of voice activity.
+                    # chirp_3 stops responding after an utterance ends so we must
+                    # open a fresh stream to pick up the next one.
+                    speech_activity_end = (
+                        cloud_speech.StreamingRecognizeResponse.SpeechEventType.SPEECH_ACTIVITY_END
+                    )
+                    if response.speech_event_type == speech_activity_end:
+                        print("[ASR] speech activity ended, restarting stream...")
+                        raise _RestartStream()
 
             except _RestartStream:
                 if self.stopped:
