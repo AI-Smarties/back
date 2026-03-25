@@ -23,8 +23,10 @@ class StreamingASR:
         self.worker.start()
 
     def stop(self):
-        self.current_q.put(None)
         self.stopped = True
+        self.current_q.put(None)
+        if self.worker.is_alive():
+            self.worker.join()
         self.gemini_live.stop()
         return self.transcript.strip()
 
