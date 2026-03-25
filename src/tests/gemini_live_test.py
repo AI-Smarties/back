@@ -1,4 +1,5 @@
 from unittest.mock import Mock, AsyncMock
+import asyncio
 import pytest
 from gemini_live import GeminiLiveSession, MODEL
 
@@ -17,9 +18,20 @@ class TestGeminiLiveSession:
         return ws
 
     @pytest.fixture
-    def session(self, mock_websocket):
+    def injected_loop(self):
+        """Create a loop-like object that executes thread-safe callbacks immediately."""
+        loop = Mock(spec=asyncio.AbstractEventLoop)
+
+        def _call_soon_threadsafe(callback, *args):
+            callback(*args)
+
+        loop.call_soon_threadsafe.side_effect = _call_soon_threadsafe
+        return loop
+
+    @pytest.fixture
+    def session(self, mock_websocket, injected_loop):
         """Create a GeminiLiveSession instance"""
-        return GeminiLiveSession(mock_websocket)
+        return GeminiLiveSession(mock_websocket, loop=injected_loop)
 
     def test_session_initialization(self, session, mock_websocket):
         """Test that session initializes correctly"""
