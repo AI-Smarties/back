@@ -83,9 +83,6 @@ class StreamingASR:
 
                 responses = self.client.streaming_recognize(requests=request_gen())
                 for response in responses:
-                    with open('./scripts/response.txt', 'a') as file:  # pylint: disable=unspecified-encoding
-                        file.write(str(response) + "\n")
-
                     # Restart the stream when GCP signals end of voice activity.
                     # chirp_3 stops responding after an utterance ends so we must
                     # open a fresh stream to pick up the next one.
