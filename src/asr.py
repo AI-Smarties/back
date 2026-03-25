@@ -101,15 +101,14 @@ class StreamingASR:
                             continue
                         text = result.alternatives[0].transcript.strip()
                         if not result.is_final:
-                            payload = {"status": "partial", "text": text}
+                            print(f"[ASR] partial transcript: {text}")
                         else:
                             if text:
                                 text = text[0].upper() + text[1:]
                                 if text[-1] not in ".!?":
                                     text += "."
                             self.transcript += text + " "
-                            payload = {"status": "final", "text": self.transcript.strip()}
-                        self._dispatch({"type": "transcript", "data": payload})
+                            self._dispatch(text)
 
             except _RestartStream:
                 if self.stopped:
