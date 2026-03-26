@@ -10,9 +10,8 @@ BYTES_PER_SAMPLE = 2  # LINEAR16
 CHUNK_DURATION = 0.1  # seconds
 CHUNK_BYTES = int(SAMPLE_RATE * BYTES_PER_SAMPLE * CHUNK_DURATION)  # 3200
 
-# pylint: disable=consider-using-with
 async def stream(url: str, path: str):
-    audio = open(path, "rb").read()
+    audio = open(path, "rb").read()  # pylint: disable=consider-using-with
     print(f"Connecting to {url} ...")
 
     async with websockets.connect(url) as ws:
@@ -31,7 +30,7 @@ async def stream(url: str, path: str):
             try:
                 async for raw in ws:
                     msg = json.loads(raw)
-                    print(f"\r[WS MSG] {msg}", flush=True)
+                    print(msg, flush=True)
             except websockets.exceptions.ConnectionClosed:
                 pass
 
