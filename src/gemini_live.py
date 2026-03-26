@@ -120,6 +120,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         self._last_drop_log_time = 0.0
 
     def start(self):
+        print(f"[Gemini Live] Starting session, mode: {'text' if self.text else 'audio'}")
         self._task = asyncio.create_task(self._run())
 
     def _log_dropped_packet_if_needed(self):
@@ -128,7 +129,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
 
         if now - self._last_drop_log_time >= 1.0:
             print(
-                "Queue full, dropped "
+                "[Gemini Live] Queue full, dropped "
                 f"{self._dropped_packets} packets in the last second"
             )
             self._dropped_packets = 0
@@ -166,6 +167,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
                 pass
 
     def stop(self) -> str:
+        print("[Gemini Live] Stopping session...")
         self._running = False
 
         # Request graceful shutdown: _send() and _run() both exit when they read None.
@@ -180,7 +182,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
             )
             self._task.cancel()
 
-        print(f"session total tokens: {self.tokens_used}")
+        print(f"[Gemini Live] session total tokens: {self.tokens_used}")
         return self.transcript.strip()
 
     async def _run(self):
@@ -199,7 +201,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
                 model=MODEL,
                 config=CONFIG,
             ) as session:
-                print(f"Gemini Live connected, mode: {'text' if self.text else 'audio'}")
+                print(f"[Gemini Live] connected with model {MODEL}")
                 await session.send_realtime_input(
                     audio={"data": first_chunk, "mime_type": "audio/pcm;rate=16000"} if not self.text else None,  # pylint: disable=line-too-long
                     text=first_chunk if self.text else None
@@ -213,7 +215,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
                 except asyncio.CancelledError:
                     pass
         except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f"Gemini Live error: {e}")
+            print(f"[Gemini Live] error: {e}")
         finally:
             await client.aio.aclose()
 
@@ -232,7 +234,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         try:
             await asyncio.wait_for(self._fetch_semaphore.acquire(), timeout=1)
         except asyncio.TimeoutError:
-            print("dropping fetch, too busy")
+            print("[Gemini Live] Dropping fetch, too busy")
             return
         try:
             tool_response = await fetch_information(
@@ -241,7 +243,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
                 transcript,
                 self.query_history,
             )
-            print(tool_response)
+            print(f"[Gemini Live] Fetch response: {tool_response}")
             answer = (
                 tool_response.get("information")
                 if tool_response["status"] == "found"
@@ -262,60 +264,56 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
             self._fetch_semaphore.release()
 
     async def _receive(self, session):
-        try:
-            while True:
-                async for response in session.receive():
-                    if response.usage_metadata:
-                        self.tokens_used += (
-                            response.usage_metadata.total_token_count or 0
-                        )
+        while True:
+            async for response in session.receive():
+                if response.usage_metadata:
+                    self.tokens_used += (
+                        response.usage_metadata.total_token_count or 0
+                    )
 
-                    server_content = response.server_content
-                    if (
-                        server_content
-                        and server_content.input_transcription
-                        and server_content.input_transcription.text
-                        and not self.text
-                    ):
-                        self.transcript += (
-                            server_content.input_transcription.text + " "
-                        )
+                server_content = response.server_content
+                if (
+                    server_content
+                    and server_content.input_transcription
+                    and server_content.input_transcription.text
+                    and not self.text
+                ):
+                    self.transcript += (
+                        server_content.input_transcription.text + " "
+                    )
 
-                    if response.tool_call:
-                        for function_call in response.tool_call.function_calls:
-                            print(f"tool call: {function_call.name}")
-                            if function_call.name == "fetch_information":
-                                previous = [
-                                    {
-                                        "query": history["query"],
-                                        "thinking_context": history["thinking_context"],
-                                    }
-                                    for history in self.query_history
-                                ]
-                                await session.send_tool_response(
-                                    function_responses=[
-                                        genai.types.FunctionResponse(
-                                            id=function_call.id,
-                                            name=function_call.name,
-                                            response={
-                                                "response": "ok",
-                                                "already_queried": json.dumps(previous),
-                                            },
-                                        )
-                                    ]
-                                )
-                                query = function_call.args["query"]
-                                thinking_context = function_call.args[
-                                    "thinking_context"
-                                ]
-
-                                asyncio.create_task(
-                                    self._fetch_in_background(
-                                        thinking_context,
-                                        query,
-                                        self.transcript,
+                if response.tool_call:
+                    for function_call in response.tool_call.function_calls:
+                        print(f"[Gemini Live] Tool call: {function_call.name}")
+                        if function_call.name == "fetch_information":
+                            previous = [
+                                {
+                                    "query": history["query"],
+                                    "thinking_context": history["thinking_context"],
+                                }
+                                for history in self.query_history
+                            ]
+                            await session.send_tool_response(
+                                function_responses=[
+                                    genai.types.FunctionResponse(
+                                        id=function_call.id,
+                                        name=function_call.name,
+                                        response={
+                                            "response": "ok",
+                                            "already_queried": json.dumps(previous),
+                                        },
                                     )
-                                )
+                                ]
+                            )
+                            query = function_call.args["query"]
+                            thinking_context = function_call.args[
+                                "thinking_context"
+                            ]
 
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f"_receive error: {e}")
+                            asyncio.create_task(
+                                self._fetch_in_background(
+                                    thinking_context,
+                                    query,
+                                    self.transcript,
+                                )
+                            )

@@ -127,10 +127,10 @@ async def extract_and_save_information_to_database(
     """
     transcript = transcript.strip()
     if not transcript:
-        print("Transcript empty, skipping extraction and summary generation")
+        print("[Memory Extractor] Transcript empty, skipping extraction and summary generation")
         return
 
-    print("extracting information from transcript")
+    print("[Memory Extractor] extracting information from transcript")
 
     extracted_name = name
     extracted_vectors = []
@@ -140,12 +140,12 @@ async def extract_and_save_information_to_database(
         if information_vectors:
             extracted_name = extracted_name or information_vectors.get("name")
             extracted_vectors = information_vectors.get("vectors", [])
-            print(json.dumps(information_vectors, indent=2))
+            print(f"[Memory Extractor] {json.dumps(information_vectors, indent=2)}")
     except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"memory_extractor_worker failed: {e}")
+        print(f"[Memory Extractor] memory_extractor_worker failed: {e}")
 
     if not extracted_vectors:
-        print("No vectors extracted, skipping store")
+        print("[Memory Extractor] No vectors extracted, skipping store")
         return
 
     try:
@@ -160,7 +160,7 @@ async def extract_and_save_information_to_database(
             ),
         )
     except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"store_data failed: {e}")
+        print(f"[Memory Extractor] store_data failed: {e}")
 
 
 def store_data(transcript, vectors, name=None, conversation_id=None, cat_id=None):
@@ -187,15 +187,16 @@ def store_data(transcript, vectors, name=None, conversation_id=None, cat_id=None
         summary = generate_summary(transcript)
         if summary:
             update_conversation_summary(conv_id, summary)
-            print(f"summary saved for conversation {conv_id}")
+            print(f"[Memory Extractor] summary saved for conversation {conv_id}")
         else:
-            print(f"no summary generated for conversation {conv_id}")
+            print(f"[Memory Extractor] no summary generated for conversation {conv_id}")
     except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"summary generation failed for conversation {conv_id}: {e}")
+        print(f"[Memory Extractor] summary generation failed for conversation {conv_id}: {e}")
 
     conv = get_conversation_by_id(conv_id)
     saved_vectors = get_vectors_by_conversation_id(conv_id)
 
+    print("[Memory Extractor]")
     print(f"conversation: {conv.id} {conv.name}")
     print(f"summary: {conv.summary}")
     print(f"category_id: {conv.category_id}")

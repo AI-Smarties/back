@@ -21,6 +21,7 @@ class StreamingASR:
         self._streaming_config = None
 
     def start(self):
+        print("[ASR] Starting ASR session...")
         self._prepare_streaming_metadata()
         self.gemini_live.start()
         self.worker.start()
@@ -53,6 +54,7 @@ class StreamingASR:
         )
 
     def stop(self):
+        print("[ASR] Stopping ASR session...")
         self.stopped = True
         self.current_q.put(None)
         if self.worker.is_alive():

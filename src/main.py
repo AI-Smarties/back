@@ -23,7 +23,7 @@ SELECTED_CATEGORY_ID = None
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     """Create database tables automatically when the app starts."""
-    print("Creating database tables on startup (if missing)")
+    print("[FastAPI] Creating database tables on startup (if missing)")
     db.create_tables()
     yield
 
@@ -46,7 +46,7 @@ async def audio_ws(ws: WebSocket):
                         await ws.send_json(
                             {"type": "error", "message": "ASR not started"}
                         )
-                        print("Received audio chunk but ASR not started")
+                        print("[FastAPI] Received audio chunk but ASR not started")
                         continue
                     ASR.push_audio(msg["bytes"])
                 if "text" in msg:
@@ -66,13 +66,13 @@ async def handle_text(  # pylint: disable=too-many-return-statements
         payload = json.loads(text)
     except json.JSONDecodeError:
         await ws.send_json({"type": "error", "message": "Invalid JSON"})
-        print(f"Invalid JSON: {text}")
+        print(f"[FastAPI] Invalid JSON: {text}")
         return
 
     payload_type = payload.get("type")
     if payload_type is None:
         await ws.send_json({"type": "error", "message": "Missing type in message"})
-        print(f"Missing type in message: {payload}")
+        print(f"[FastAPI] Missing type in message: {payload}")
         return
 
     if payload_type == "control":
@@ -81,7 +81,7 @@ async def handle_text(  # pylint: disable=too-many-return-statements
             await ws.send_json(
                 {"type": "error", "message": "Missing command in control message"}
             )
-            print(f"Missing command in control message: {payload}")
+            print(f"[FastAPI] Missing command in control message: {payload}")
             return
 
         if cmd == "start":
@@ -92,12 +92,12 @@ async def handle_text(  # pylint: disable=too-many-return-statements
             return
 
         await ws.send_json({"type": "error", "message": "Unknown command"})
-        print(f"Unknown command: {cmd}")
+        print(f"[FastAPI] Unknown command: {cmd}")
         return
 
     if payload_type == "calendar_context":
         LATEST_CALENDAR_CONTEXT = payload.get("data")
-        print(f"Received calendar context: {LATEST_CALENDAR_CONTEXT}")
+        print(f"[FastAPI] Received calendar context: {LATEST_CALENDAR_CONTEXT}")
         await ws.send_json(
             {"type": "control", "cmd": "calendar_context_received"}
         )
@@ -105,19 +105,18 @@ async def handle_text(  # pylint: disable=too-many-return-statements
 
     if payload_type == "selected_category":
         SELECTED_CATEGORY_ID = payload.get("category_id")
-        print(f"Received selected category id: {SELECTED_CATEGORY_ID}")
+        print(f"[FastAPI] Received selected category id: {SELECTED_CATEGORY_ID}")
         await ws.send_json(
             {"type": "control", "cmd": "selected_category_received"}
         )
         return
 
     await ws.send_json({"type": "error", "message": "Unknown message type"})
-    print(f"Unknown message type: {payload_type}")
+    print(f"[FastAPI] Unknown message type: {payload_type}")
 
 
 async def start_asr(ws: WebSocket, notify: bool = True):
     global ASR  # pylint: disable=global-statement
-    print("Starting ASR")
     if ASR:
         ASR.stop()
     speech_client = SpeechClient(
@@ -135,7 +134,6 @@ async def start_asr(ws: WebSocket, notify: bool = True):
 
 async def stop_asr(ws: WebSocket, notify: bool = True):
     global ASR  # pylint: disable=global-statement
-    print("Stopping ASR")
     if ASR:
         transcript = ASR.stop()
         if transcript:

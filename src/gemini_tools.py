@@ -78,7 +78,7 @@ async def evaluate_db_data(
         f"- {vector.conversation.timestamp} {vector.text}"
         for vector in vector_database_response
     )
-    print(formatted_vectors)
+    print(f"[Gemini Tools] Formatted vectors: {formatted_vectors}")
 
     contents = (
         f"full_conversation_transcript: {transcript}\n"
@@ -130,7 +130,7 @@ async def evaluate_db_data(
         ),
     )
 
-    print(f"evaluate_db_data tokens: {response.usage_metadata.total_token_count}")
+    print(f"[Gemini Tools] evaluate_db_data tokens: {response.usage_metadata.total_token_count}")
     data = response.parsed
     status = data.get("status")
 
@@ -167,8 +167,8 @@ async def fetch_information(
         return {"status": "not_relevant", "thinking": ""}
 
     try:
-        print(f"query: {query}\nthinking: {thinking_context}")
-        print(json.dumps(query_history, indent=2))
+        print(f"[Gemini Tools] query: {query}\nthinking: {thinking_context}")
+        print(f"[Gemini Tools] {json.dumps(query_history, indent=2)}")
 
         results = await asyncio.to_thread(
             search_vectors,
@@ -178,7 +178,7 @@ async def fetch_information(
         )
 
         if not results:
-            print("no vector data")
+            print("[Gemini Tools] no vector data")
             return {"status": "not_relevant", "thinking": ""}
 
         return await evaluate_db_data(
@@ -188,6 +188,7 @@ async def fetch_information(
             query_history or [],
         )
     except Exception as error:  # pylint: disable=broad-exception-caught
+        print(f"[Gemini Tools] Failed to fetch information: {error}")
         return {
             "status": "error",
             "error_message": f"Failed to fetch information: {error}",
