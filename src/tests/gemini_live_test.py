@@ -1,5 +1,5 @@
-from unittest.mock import Mock, AsyncMock
 import asyncio
+from unittest.mock import Mock, AsyncMock
 import pytest
 from gemini_live import GeminiLiveSession, MODEL
 
@@ -31,7 +31,9 @@ class TestGeminiLiveSession:
     @pytest.fixture
     def session(self, mock_websocket, injected_loop):
         """Create a GeminiLiveSession instance"""
-        return GeminiLiveSession(mock_websocket, loop=injected_loop)
+        session = GeminiLiveSession(mock_websocket)
+        session._loop = injected_loop
+        return session
 
     def test_session_initialization(self, session, mock_websocket):
         """Test that session initializes correctly"""
