@@ -1,6 +1,7 @@
 from pgvector.sqlalchemy import VECTOR
 from sqlalchemy import Column, Integer, Text, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
+
 from db import Base  # pylint: disable=cyclic-import
 
 

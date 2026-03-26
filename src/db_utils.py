@@ -1,10 +1,12 @@
 from datetime import datetime
+
 from zoneinfo import ZoneInfo
 import vertexai
 from vertexai.language_models import TextEmbeddingModel
 import google
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
+
 from db import sessionlocal
 from models import Conversation, Vector, Category, EMBEDDING_DIMENSIONS
 

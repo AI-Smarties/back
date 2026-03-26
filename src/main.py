@@ -5,8 +5,6 @@ import json
 
 from fastapi import FastAPI, WebSocket, HTTPException
 from sqlalchemy.exc import IntegrityError
-from google.cloud.speech_v2 import SpeechClient
-from google.api_core.client_options import ClientOptions
 
 from asr import StreamingASR
 from memory_extractor import extract_and_save_information_to_database
@@ -119,13 +117,8 @@ async def start_asr(ws: WebSocket, notify: bool = True):
     global ASR  # pylint: disable=global-statement
     if ASR:
         ASR.stop()
-    speech_client = SpeechClient(
-        client_options=ClientOptions(
-            api_endpoint="eu-speech.googleapis.com",
-        )
-    )
     gemini_live = GeminiLiveSession(ws, text=True)
-    ASR = StreamingASR(speech_client, gemini_live)
+    ASR = StreamingASR(gemini_live)
     ASR.start()
     if not notify:
         return
