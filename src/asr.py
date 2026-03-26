@@ -17,10 +17,40 @@ class StreamingASR:
         self.client = client
         self.gemini_live = gemini_live
         self.worker = threading.Thread(target=self._worker, daemon=True)
+        self._recognizer = None
+        self._streaming_config = None
 
     def start(self):
+        self._prepare_streaming_metadata()
         self.gemini_live.start()
         self.worker.start()
+
+    def _prepare_streaming_metadata(self):
+        _, project = auth.default()
+        if not project:
+            raise RuntimeError(
+                "Could not determine GCP project id from Application Default Credentials."
+            )
+
+        self._recognizer = self.client.recognizer_path(project, "eu", "_")
+        self._streaming_config = cloud_speech.StreamingRecognitionConfig(
+            config=cloud_speech.RecognitionConfig(
+                explicit_decoding_config=cloud_speech.ExplicitDecodingConfig(
+                    encoding=cloud_speech.ExplicitDecodingConfig.AudioEncoding.LINEAR16,
+                    sample_rate_hertz=16000,
+                    audio_channel_count=1,
+                ),
+                language_codes=["fi-FI"],
+                model='chirp_3',
+                features=cloud_speech.RecognitionFeatures(
+                    enable_automatic_punctuation=True,
+                ),
+            ),
+            streaming_features=cloud_speech.StreamingRecognitionFeatures(
+                interim_results=False,
+                enable_voice_activity_events=True,
+            ),
+        )
 
     def stop(self):
         self.stopped = True
@@ -46,36 +76,9 @@ class StreamingASR:
             my_q = self.current_q
             try:
                 def request_gen():
-                    _, project = auth.default()
-                    if not project:
-                        raise RuntimeError(
-                            "Could not determine GCP project id from Application Default "
-                            "Credentials."
-                        )
-                    recognizer = self.client.recognizer_path(project, "eu", "_")
-
-                    config = cloud_speech.StreamingRecognitionConfig(
-                        config=cloud_speech.RecognitionConfig(
-                            explicit_decoding_config=cloud_speech.ExplicitDecodingConfig(
-                                encoding=cloud_speech.ExplicitDecodingConfig.AudioEncoding.LINEAR16,
-                                sample_rate_hertz=16000,
-                                audio_channel_count=1,
-                            ),
-                            language_codes=["fi-FI"],
-                            model='chirp_3',
-                            features=cloud_speech.RecognitionFeatures(
-                                enable_automatic_punctuation=True,
-                            ),
-                        ),
-                        streaming_features=cloud_speech.StreamingRecognitionFeatures(
-                            interim_results=False,
-                            enable_voice_activity_events=True,
-                        ),
-                    )
-
                     yield cloud_speech.StreamingRecognizeRequest(
-                        recognizer=recognizer,
-                        streaming_config=config,
+                        recognizer=self._recognizer,
+                        streaming_config=self._streaming_config,
                     )
 
                     while True:
