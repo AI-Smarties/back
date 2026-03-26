@@ -5,11 +5,7 @@ from google.cloud.speech_v2.types import cloud_speech
 from gemini_live import amplify_chunk
 
 
-class _RestartStream(Exception):
-    """Raised to break out of the response loop and restart the stream."""
-
-
-class StreamingASR:
+class StreamingASR:  # pylint: disable=too-many-instance-attributes
     def __init__(self, client, gemini_live):
         self.current_q = queue.Queue()
         self.transcript = ""
@@ -97,30 +93,13 @@ class StreamingASR:
                         if not result.alternatives:
                             continue
                         text = result.alternatives[0].transcript.strip()
-                        if not result.is_final:
-                            raise RuntimeError(
-                                "Received non-final result, but interim results are disabled"
-                            )
                         self.transcript += text + " "
                         self._dispatch(text)
 
-                    # Restart the stream when GCP signals end of voice activity.
-                    # chirp_3 stops responding after an utterance ends so we must
-                    # open a fresh stream to pick up the next one.
-                    speech_activity_end = (
-                        cloud_speech.StreamingRecognizeResponse.SpeechEventType.SPEECH_ACTIVITY_END
-                    )
-                    if response.speech_event_type == speech_activity_end:
-                        print("[ASR] speech activity ended, restarting stream...")
-                        raise _RestartStream()
-
-            except _RestartStream:
-                if self.stopped:
-                    break
             except Exception as e:  # pylint: disable=broad-exception-caught
                 if self.stopped:
                     break
-                print(f"[ASR] stream error, restarting... {e}")
+                print(f"[ASR] stream error: '{e}', restarting with a new queue...")
 
             # Rotate queue: give push_audio a fresh queue for the next stream and
             # send None to the old one so the zombie generator unblocks and exits.
