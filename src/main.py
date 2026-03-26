@@ -82,7 +82,7 @@ async def handle_text(  # pylint: disable=too-many-return-statements
             return
 
         if cmd == "start":
-            await start_gemini_live(ws)
+            await start_gemini_live(ws, LATEST_CALENDAR_CONTEXT)
             return
         if cmd == "stop":
             await stop_gemini_live()
@@ -111,10 +111,10 @@ async def handle_text(  # pylint: disable=too-many-return-statements
             )
             print(f"Invalid calendar context format: {LATEST_CALENDAR_CONTEXT}")
             return
-
-        LATEST_CALENDAR_CONTEXT = build_context(LATEST_CALENDAR_CONTEXT)
-
         print(f"Received calendar context: {LATEST_CALENDAR_CONTEXT}")
+        LATEST_CALENDAR_CONTEXT = build_context(LATEST_CALENDAR_CONTEXT)
+        print(f"Build context: {LATEST_CALENDAR_CONTEXT}")
+
         await ws.send_json(
             {"type": "control", "cmd": "calendar_context_received"}
         )
@@ -132,12 +132,12 @@ async def handle_text(  # pylint: disable=too-many-return-statements
     print(f"Unknown message type: {payload_type}")
 
 
-async def start_gemini_live(ws: WebSocket):
+async def start_gemini_live(ws: WebSocket, calendar_context):
     global GEMINI_LIVE  # pylint: disable=global-statement
     print("Starting Gemini Live")
     if GEMINI_LIVE:
         await GEMINI_LIVE.stop()
-    GEMINI_LIVE = GeminiLiveSession(ws)
+    GEMINI_LIVE = GeminiLiveSession(ws, calendar_context)
     await GEMINI_LIVE.start()
 
 
