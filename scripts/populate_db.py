@@ -26,6 +26,7 @@ from db_utils import (
 from db import create_tables, drop_tables
 
 TIMEZONE = "Europe/Helsinki"
+POPULATE_USER_ID = "populate-script-user"
 
 
 def populate_categories():
@@ -42,7 +43,7 @@ def populate_categories():
 
     created_ids = {}
     for cat_name in categories:
-        cat = create_category(cat_name)
+        cat = create_category(cat_name, user_id=POPULATE_USER_ID)
         print(f"  Created category '{cat_name}' (ID: {cat.id})")
         created_ids[cat_name] = cat.id
 
@@ -158,6 +159,7 @@ def populate_conversations(category_ids):
             summary=conv_data["summary"],
             cat_id=cat_id,
             timestamp=conv_data["timestamp"],
+            user_id=POPULATE_USER_ID,
         )
         print(f"  Created conversation '{conv_data['name']}' (ID: {conv.id})")
 
@@ -178,13 +180,13 @@ def print_database_summary():
     print("DATABASE SUMMARY")
     print("=" * 60)
 
-    categories = get_categories()
+    categories = get_categories(POPULATE_USER_ID)
     print(f"\nTotal Categories: {len(categories)}")
 
-    conversations = get_conversations()
+    conversations = get_conversations(POPULATE_USER_ID)
     print(f"\nTotal Conversations: {len(conversations)}")
 
-    vectors = get_vectors()
+    vectors = get_vectors(POPULATE_USER_ID)
     print(f"\nTotal Vectors: {len(vectors)}")
 
     print("\n" + "=" * 60)

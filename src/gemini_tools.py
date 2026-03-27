@@ -2,6 +2,7 @@
 Tool functions for Gemini Live API.
 These functions can be called by Gemini as tool calls.
 """
+# pylint: disable=duplicate-code
 
 import asyncio
 import json
