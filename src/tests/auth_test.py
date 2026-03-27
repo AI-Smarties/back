@@ -1,7 +1,8 @@
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
+
 from main import app
 from auth import get_current_user
-from fastapi import HTTPException
 
 client = TestClient(app)
 

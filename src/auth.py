@@ -2,14 +2,14 @@ import firebase_admin
 from firebase_admin import credentials, auth
 from fastapi import HTTPException, Header
 
-_app = None
+FIREBASE_APP = None
 
 
 def _init_firebase():
-    global _app
-    if _app is None:
+    global FIREBASE_APP # pylint: disable=global-statement
+    if FIREBASE_APP is None:
         cred = credentials.ApplicationDefault()
-        _app = firebase_admin.initialize_app(cred)
+        FIREBASE_APP = firebase_admin.initialize_app(cred)
 
 
 def verify_token(auth_header: str):
@@ -22,8 +22,8 @@ def verify_token(auth_header: str):
         _init_firebase()
         decoded = auth.verify_id_token(token)
         return decoded
-    except Exception:
-        raise HTTPException(401, "Invalid token")
+    except Exception as e: # pylint: disable=broad-exception-caught
+        raise HTTPException(401, "Invalid token") from e
 
 
 def get_current_user(authorization: str = Header(None)):

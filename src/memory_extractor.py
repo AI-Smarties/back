@@ -166,7 +166,7 @@ async def extract_and_save_information_to_database(
         print(f"store_data failed: {e}")
 
 
-def store_data(transcript, vectors, user_id, name=None, conversation_id=None, cat_id=None):
+def store_data(transcript, vectors, user_id, name=None, conversation_id=None, cat_id=None): # pylint: disable=too-many-arguments,too-many-positional-arguments
     """
     Persist conversation, vectors, and summary.
 

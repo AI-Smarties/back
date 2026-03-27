@@ -1,3 +1,5 @@
+# pylint: disable=too-few-public-methods,unused-argument
+
 from unittest.mock import patch
 import pytest
 from gemini_tools import fetch_information

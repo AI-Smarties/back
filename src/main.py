@@ -3,7 +3,7 @@ from datetime import datetime
 import asyncio
 import json
 
-from fastapi import FastAPI, WebSocket, HTTPException
+from fastapi import FastAPI, WebSocket, HTTPException, Depends
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
 from gemini_live import GeminiLiveSession
@@ -11,7 +11,6 @@ from memory_extractor import extract_and_save_information_to_database
 import db_utils
 import db
 
-from fastapi import Depends
 from auth import get_current_user, verify_token
 
 
@@ -36,17 +35,18 @@ async def audio_ws(ws: WebSocket):
 
     try:
         decoded = verify_token(f"Bearer {token}")
-    except Exception:
+    except Exception: # pylint: disable=broad-exception-caught
         await ws.close(code=1008)
         return
 
     user_id = decoded["uid"]
 
+    ws.state.USER_ID = user_id
+    ws.state.GEMINI_LIVE = None
+    ws.state.LATEST_CALENDAR_CONTENT = None
+    ws.state.SELECTED_CATEGORY_ID = None
+
     await ws.accept()
-    ws.state.user_id = user_id
-    ws.state.gemini_live = None
-    ws.state.category_id = None
-    ws.state.calendar_context = None
     await ws.send_json({"type": "control", "cmd": "ready"})
     try:
         while True:
@@ -55,17 +55,20 @@ async def audio_ws(ws: WebSocket):
                 break
             if msg["type"] == "websocket.receive":
                 if "bytes" in msg:
-                    if not ws.state.gemini_live:
+                    if not ws.state.GEMINI_LIVE:
                         await ws.send_json(
                             {"type": "error", "message": "Gemini Live not started"}
                         )
                         print("Received audio chunk but Gemini Live not started")
                         continue
-                    ws.state.gemini_live.push_audio(msg["bytes"])
+
+                    ws.state.GEMINI_LIVE.push_audio(msg["bytes"])
+
                 elif "text" in msg:
-                    await handle_text(msg["text"], ws, ws.state.user_id)
+                    await handle_text(msg["text"], ws, ws.state.USER_ID)
     finally:
         await stop_gemini_live(ws)
+        ws.state.GEMINI_LIVE = None
 
 
 async def handle_text(  # pylint: disable=too-many-return-statements
@@ -108,16 +111,16 @@ async def handle_text(  # pylint: disable=too-many-return-statements
         return
 
     if payload_type == "calendar_context":
-        ws.state.calendar_context = payload.get("data")
-        print(f"Received calendar context: {ws.state.calendar_context}")
+        ws.state.LATEST_CALENDAR_CONTENT = payload.get("data")
+        print(f"Received calendar context: {ws.state.LATEST_CALENDAR_CONTENT}")
         await ws.send_json(
             {"type": "control", "cmd": "calendar_context_received"}
         )
         return
 
     if payload_type == "selected_category":
-        ws.state.category_id = payload.get("category_id")
-        print(f"Received selected category id: {ws.state.category_id}")
+        ws.state.SELECTED_CATEGORY_ID = payload.get("category_id")
+        print(f"Received selected category id: {ws.state.SELECTED_CATEGORY_ID}")
         await ws.send_json(
             {"type": "control", "cmd": "selected_category_received"}
         )
@@ -128,37 +131,34 @@ async def handle_text(  # pylint: disable=too-many-return-statements
 
 
 async def start_gemini_live(ws: WebSocket, user_id: str):
+    ws.state.USER_ID = user_id
+
     print("Starting Gemini Live")
 
-    ws.state.user_id = user_id
+    if not ws.state.GEMINI_LIVE:
+        ws.state.GEMINI_LIVE = GeminiLiveSession(ws)
 
-    if getattr(ws.state, "gemini_live", None):
-        await ws.state.gemini_live.stop()
-
-    ws.state.gemini_live = GeminiLiveSession(ws)
-    await ws.state.gemini_live.start()
+    if not ws.state.GEMINI_LIVE.running:
+        await ws.state.GEMINI_LIVE.start()
 
 
 async def stop_gemini_live(ws: WebSocket):
-    print("Stopping Gemini Live")
+    if ws.state.GEMINI_LIVE and ws.state.GEMINI_LIVE.running:
+        print("Stopping Gemini Live")
 
-    gemini = getattr(ws.state, "gemini_live", None)
-
-    if gemini:
-        transcript = await gemini.stop()
+        transcript = await ws.state.GEMINI_LIVE.stop()
         print(transcript)
 
         transcript = transcript.strip()
+
         if transcript:
             asyncio.create_task(
                 extract_and_save_information_to_database(
                     transcript,
-                    user_id=ws.state.user_id,
-                    cat_id=getattr(ws.state, "category_id", None),
+                    user_id=ws.state.USER_ID,
+                    cat_id=ws.state.SELECTED_CATEGORY_ID,
                 )
             )
-
-    ws.state.gemini_live = None
 
 
 @app.get("/get/vectors")
@@ -166,8 +166,8 @@ def get_vectors(vec_id: int = None, conv_id: int = None, user=Depends(get_curren
     if vec_id is not None:
         try:
             vec = db_utils.get_vector_by_id(vec_id, user["user_id"])
-        except NoResultFound:
-            raise HTTPException(404, "Not found")
+        except NoResultFound as e:
+            raise HTTPException(404, "Not found") from e
         return [{
             "id": vec.id,
             "text": vec.text,
@@ -192,8 +192,8 @@ def get_conversations(conv_id: int = None, cat_id: int = None, user=Depends(get_
     if conv_id is not None:
         try:
             conv = db_utils.get_conversation_by_id(conv_id, user["user_id"])
-        except NoResultFound:
-            raise HTTPException(404, "Not found")
+        except NoResultFound as e:
+            raise HTTPException(404, "Not found") from e
         return [{
             "id": conv.id,
             "name": conv.name,
@@ -232,8 +232,8 @@ def get_categories(cat_id: int = None, name: str = None, user=Depends(get_curren
         cats = db_utils.get_categories(user["user_id"])
         return [{"id": cat.id, "name": cat.name} for cat in cats]
 
-    except NoResultFound:
-        raise HTTPException(404, "Not found")
+    except NoResultFound as e:
+        raise HTTPException(404, "Not found") from e
 
 
 @app.post("/create/vector")
@@ -242,8 +242,8 @@ def create_vector(text: str, conv_id: int, user=Depends(get_current_user)):
     try:
         db_utils.get_conversation_by_id(conv_id, user["user_id"])
         vec = db_utils.create_vector(text=text, conv_id=conv_id)
-    except NoResultFound:
-        raise HTTPException(404, "Conversation not found")
+    except NoResultFound as e:
+        raise HTTPException(404, "Conversation not found") from e
     except IntegrityError as e:
         raise HTTPException(409, "Foreign key constraint failed") from e
     return {"id": vec.id, "text": vec.text, "conversation_id": vec.conversation_id}
