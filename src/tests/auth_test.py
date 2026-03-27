@@ -1,3 +1,7 @@
+from sqlalchemy.exc import OperationalError
+import db
+import pytest
+
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
@@ -23,13 +27,17 @@ def test_users_me_returns_user():
 
 
 def test_user_isolation_between_users():
+    try:
+        db.drop_tables()
+    except OperationalError:
+        pytest.skip("Database not available")
+
     # --- user A ---
     app.dependency_overrides[get_current_user] = lambda: {
         "user_id": "user-A",
         "email": "a@test.com",
     }
 
-    client.post("/drop/tables")
     client.post("/create/tables")
 
     client.post("/create/category?name=A_cat")

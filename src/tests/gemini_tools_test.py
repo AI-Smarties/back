@@ -88,6 +88,13 @@ class TestFetchInformation:
 
     @pytest.mark.asyncio
     async def test_fetch_information_user_isolation(self, monkeypatch):
+        from sqlalchemy.exc import OperationalError
+        import db
+
+        try:
+            db.create_tables()
+        except OperationalError:
+            pytest.skip("Database not available")
 
         class _StubEmbeddingModel:
             def get_embeddings(self, texts, output_dimensionality):
