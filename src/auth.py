@@ -2,8 +2,14 @@ import firebase_admin
 from firebase_admin import credentials, auth
 from fastapi import HTTPException, Header
 
-cred = credentials.ApplicationDefault()
-firebase_admin.initialize_app(cred)
+_app = None
+
+
+def _init_firebase():
+    global _app
+    if _app is None:
+        cred = credentials.ApplicationDefault()
+        _app = firebase_admin.initialize_app(cred)
 
 
 def verify_token(auth_header: str):
@@ -13,6 +19,7 @@ def verify_token(auth_header: str):
     token = auth_header.split(" ")[1]
 
     try:
+        _init_firebase()
         decoded = auth.verify_id_token(token)
         return decoded
     except Exception:

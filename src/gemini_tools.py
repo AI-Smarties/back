@@ -20,7 +20,8 @@ def get_client():
     global CLIENT  # pylint: disable=global-statement
     if CLIENT is None:
         _, project = auth.default()
-        CLIENT = genai.Client(vertexai=True, project=project, location="global")
+        CLIENT = genai.Client(
+            vertexai=True, project=project, location="global")
     return CLIENT
 
 
@@ -130,7 +131,8 @@ async def evaluate_db_data(
         ),
     )
 
-    print(f"evaluate_db_data tokens: {response.usage_metadata.total_token_count}")
+    print(
+        f"evaluate_db_data tokens: {response.usage_metadata.total_token_count}")
     data = response.parsed
     status = data.get("status")
 
@@ -159,6 +161,7 @@ async def fetch_information(
     query: str,
     transcript: str,
     query_history: list[dict] | None = None,
+    user_id: str | None = None,
 ) -> EvaluateResponse:
     """
     Fetch useful information based on a text query from vector database.
@@ -172,7 +175,8 @@ async def fetch_information(
 
         results = await asyncio.get_event_loop().run_in_executor(
             None,
-            lambda: search_vectors(query, limit=5, max_distance=0.5),
+            lambda: search_vectors(
+                query, user_id=user_id, limit=5, max_distance=0.5),
         )
 
         if not results:
