@@ -25,26 +25,38 @@ def get_client():
 
 
 SYSTEM_PROMPT = """
-Answer the question in thought_context using only the vector_database_responses as source.
-If the results don't answer the question directly, return "not_relevant".
-You can use the transcript to understand context but not as an information source.
+Your job: decide if vector_database_responses contain information that would genuinely help the user RIGHT NOW based on the current conversation.
 
-Dont send information to user if transcript is providing the information already.
+Step 1 Validate thought_context against transcript:
+Check if the thought_context is grounded in what has actually been said in the transcript.
+If the thought_context is speculative or goes beyond what the transcript says, return "not_relevant".
+
+Step 2 Check if vectors answer it:
+Only return "found" if the vector_database_responses explicitly answer the thought_context.
+Return information ONLY by quoting or closely paraphrasing the vector_database_responses.
 You can also combine the information from database vector responses to have more updated information
+Do NOT infer, reason, or generate information not stated in the vectors.
+Do NOT return information already present in the transcript.
+Do NOT repeat information from previous_queries_and_answers.
+If the vectors don't directly answer the thought_context, return "not_relevant".
+
+Step 3 Format for glasses display:
+If found, write 1 concise sentence. It will be shown on smart glasses, keep it short.
+
+
+Be strict. Only return "found" if the information would genuinely help the user right now.
+
+Return "not_relevant" if:
+- The thought_context is not grounded in the transcript
+- The vectors don't answer the question
+- The information is already in the transcript
+- The information was already sent in this session
 
 Given:
-- transcript: The conversation transcript
-- thought_context: Why the query was made by Gemini Live
-- vector_database_responses: Data from vector database, use only these as source of information
-- previous_queries_and_answers: Earlier tool calls this session with their answers. Do not repeat information already sent.
-
-Decide:
-- "found": vector_database_responses answers the question or fulfills the reason in thought_context
-- "not_relevant": results exist but are not actually relevant to the current moment
-- "error": something is wrong with the inputs
-
-you return always your thought context
-Be strict. Only return "found" if the information would genuinely help the user right now.
+- transcript: The conversation so far
+- thought_context: Why Gemini Live made this query
+- vector_database_responses: Historical data, your ONLY source for "found" answers
+- previous_queries_and_answers: Already sent this session, do not repeat
 """
 
 
