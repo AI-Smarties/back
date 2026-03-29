@@ -3,15 +3,15 @@ from datetime import datetime
 import asyncio
 import json
 
-from fastapi import FastAPI, WebSocket, HTTPException
-from sqlalchemy.exc import IntegrityError
+from fastapi import FastAPI, WebSocket, HTTPException, Depends
+from sqlalchemy.exc import IntegrityError, NoResultFound
 
 from gemini_live import GeminiLiveSession
 from memory_extractor import extract_and_save_information_to_database
 import db_utils
 import db
 
-
+from auth import get_current_user, verify_token
 
 
 @asynccontextmanager
@@ -27,9 +27,25 @@ app = FastAPI(lifespan=lifespan)
 
 @app.websocket("/ws/")
 async def audio_ws(ws: WebSocket):
+    token = ws.query_params.get("token")
+
+    if not token:
+        await ws.close(code=1008)
+        return
+
+    try:
+        decoded = verify_token(f"Bearer {token}")
+    except Exception: # pylint: disable=broad-exception-caught
+        await ws.close(code=1008)
+        return
+
+    user_id = decoded["uid"]
+
+    ws.state.USER_ID = user_id
     ws.state.GEMINI_LIVE = None
     ws.state.LATEST_CALENDAR_CONTENT = None
     ws.state.SELECTED_CATEGORY_ID = None
+
     await ws.accept()
     await ws.send_json({"type": "control", "cmd": "ready"})
     try:
@@ -45,18 +61,20 @@ async def audio_ws(ws: WebSocket):
                         )
                         print("Received audio chunk but Gemini Live not started")
                         continue
+
                     ws.state.GEMINI_LIVE.push_audio(msg["bytes"])
+
                 elif "text" in msg:
-                    await handle_text(msg["text"], ws)
+                    await handle_text(msg["text"], ws, ws.state.USER_ID)
     finally:
         await stop_gemini_live(ws)
         ws.state.GEMINI_LIVE = None
 
 
-
 async def handle_text(  # pylint: disable=too-many-return-statements
     text: str,
     ws: WebSocket,
+    user_id: str,
 ):
 
     try:
@@ -82,7 +100,7 @@ async def handle_text(  # pylint: disable=too-many-return-statements
             return
 
         if cmd == "start":
-            await start_gemini_live(ws)
+            await start_gemini_live(ws, user_id)
             return
         if cmd == "stop":
             await stop_gemini_live(ws)
@@ -93,18 +111,16 @@ async def handle_text(  # pylint: disable=too-many-return-statements
         return
 
     if payload_type == "calendar_context":
-        _calendar_content = payload.get("data")
-        ws.state.LATEST_CALENDAR_CONTENT = _calendar_content
-        print(f"Received calendar context: {_calendar_content}")
+        ws.state.LATEST_CALENDAR_CONTENT = payload.get("data")
+        print(f"Received calendar context: {ws.state.LATEST_CALENDAR_CONTENT}")
         await ws.send_json(
             {"type": "control", "cmd": "calendar_context_received"}
         )
         return
 
     if payload_type == "selected_category":
-        _category_id = payload.get("category_id")
-        ws.state.SELECTED_CATEGORY_ID = _category_id
-        print(f"Received selected category id: {_category_id}")
+        ws.state.SELECTED_CATEGORY_ID = payload.get("category_id")
+        print(f"Received selected category id: {ws.state.SELECTED_CATEGORY_ID}")
         await ws.send_json(
             {"type": "control", "cmd": "selected_category_received"}
         )
@@ -114,8 +130,11 @@ async def handle_text(  # pylint: disable=too-many-return-statements
     print(f"Unknown message type: {payload_type}")
 
 
-async def start_gemini_live(ws: WebSocket):
+async def start_gemini_live(ws: WebSocket, user_id: str):
+    ws.state.USER_ID = user_id
+
     print("Starting Gemini Live")
+
     if not ws.state.GEMINI_LIVE:
         ws.state.GEMINI_LIVE = GeminiLiveSession(ws)
 
@@ -126,26 +145,29 @@ async def start_gemini_live(ws: WebSocket):
 async def stop_gemini_live(ws: WebSocket):
     if ws.state.GEMINI_LIVE and ws.state.GEMINI_LIVE.running:
         print("Stopping Gemini Live")
+
         transcript = await ws.state.GEMINI_LIVE.stop()
         print(transcript)
 
         transcript = transcript.strip()
+
         if transcript:
             asyncio.create_task(
                 extract_and_save_information_to_database(
                     transcript,
+                    user_id=ws.state.USER_ID,
                     cat_id=ws.state.SELECTED_CATEGORY_ID,
                 )
             )
 
 
-
 @app.get("/get/vectors")
-def get_vectors(vec_id: int = None, conv_id: int = None):
+def get_vectors(vec_id: int = None, conv_id: int = None, user=Depends(get_current_user)):
     if vec_id is not None:
-        vec = db_utils.get_vector_by_id(vec_id)
-        if vec is None:
-            return []
+        try:
+            vec = db_utils.get_vector_by_id(vec_id, user["user_id"])
+        except NoResultFound as e:
+            raise HTTPException(404, "Not found") from e
         return [{
             "id": vec.id,
             "text": vec.text,
@@ -153,9 +175,10 @@ def get_vectors(vec_id: int = None, conv_id: int = None):
         }]
 
     if conv_id is not None:
-        vecs = db_utils.get_vectors_by_conversation_id(conv_id)
+        vecs = db_utils.get_vectors_by_conversation_id(
+            conv_id, user["user_id"])
     else:
-        vecs = db_utils.get_vectors()
+        vecs = db_utils.get_vectors(user["user_id"])
 
     return [{
         "id": vec.id,
@@ -165,11 +188,12 @@ def get_vectors(vec_id: int = None, conv_id: int = None):
 
 
 @app.get("/get/conversations")
-def get_conversations(conv_id: int = None, cat_id: int = None):
+def get_conversations(conv_id: int = None, cat_id: int = None, user=Depends(get_current_user)):
     if conv_id is not None:
-        conv = db_utils.get_conversation_by_id(conv_id)
-        if conv is None:
-            return []
+        try:
+            conv = db_utils.get_conversation_by_id(conv_id, user["user_id"])
+        except NoResultFound as e:
+            raise HTTPException(404, "Not found") from e
         return [{
             "id": conv.id,
             "name": conv.name,
@@ -179,9 +203,10 @@ def get_conversations(conv_id: int = None, cat_id: int = None):
         }]
 
     if cat_id is not None:
-        convs = db_utils.get_conversations_by_category_id(cat_id)
+        convs = db_utils.get_conversations_by_category_id(
+            cat_id, user["user_id"])
     else:
-        convs = db_utils.get_conversations()
+        convs = db_utils.get_conversations(user["user_id"])
 
     return [{
         "id": conv.id,
@@ -193,27 +218,32 @@ def get_conversations(conv_id: int = None, cat_id: int = None):
 
 
 @app.get("/get/categories")
-def get_categories(cat_id: int = None, name: str = None):
-    if cat_id is not None:
-        cat = db_utils.get_category_by_id(cat_id)
-    elif name is not None:
-        name = name.strip()
-        cat = db_utils.get_category_by_name(name)
-    else:
-        cats = db_utils.get_categories()
+def get_categories(cat_id: int = None, name: str = None, user=Depends(get_current_user)):
+    try:
+        if cat_id is not None:
+            cat = db_utils.get_category_by_id(cat_id, user["user_id"])
+            return [{"id": cat.id, "name": cat.name}]
+
+        if name is not None:
+            name = name.strip()
+            cat = db_utils.get_category_by_name(name, user["user_id"])
+            return [{"id": cat.id, "name": cat.name}]
+
+        cats = db_utils.get_categories(user["user_id"])
         return [{"id": cat.id, "name": cat.name} for cat in cats]
 
-    if cat is None:
-        return []
-
-    return [{"id": cat.id, "name": cat.name}]
+    except NoResultFound as e:
+        raise HTTPException(404, "Not found") from e
 
 
 @app.post("/create/vector")
-def create_vector(text: str, conv_id: int):
+def create_vector(text: str, conv_id: int, user=Depends(get_current_user)):
     text = text.strip()
     try:
+        db_utils.get_conversation_by_id(conv_id, user["user_id"])
         vec = db_utils.create_vector(text=text, conv_id=conv_id)
+    except NoResultFound as e:
+        raise HTTPException(404, "Conversation not found") from e
     except IntegrityError as e:
         raise HTTPException(409, "Foreign key constraint failed") from e
     return {"id": vec.id, "text": vec.text, "conversation_id": vec.conversation_id}
@@ -225,16 +255,19 @@ def create_conversation(
     summary: str = None,
     cat_id: int = None,
     timestamp: str = None,
+    user=Depends(get_current_user)
 ):
     name = name.strip()
     summary = summary.strip() if summary else None
-    timestamp = datetime.fromisoformat(timestamp.strip()) if timestamp else None
+    timestamp = datetime.fromisoformat(
+        timestamp.strip()) if timestamp else None
     try:
         conv = db_utils.create_conversation(
             name=name,
             summary=summary,
             cat_id=cat_id,
             timestamp=timestamp,
+            user_id=user["user_id"],
         )
     except IntegrityError as e:
         raise HTTPException(409, "Foreign key constraint failed") from e
@@ -248,23 +281,25 @@ def create_conversation(
 
 
 @app.post("/create/category")
-def create_category(name: str):
+def create_category(name: str, user=Depends(get_current_user)):
     name = name.strip()
     try:
-        cat = db_utils.create_category(name=name)
+        cat = db_utils.create_category(name=name, user_id=user["user_id"],)
     except IntegrityError as e:
         raise HTTPException(409, "Category already exists") from e
     return {"id": cat.id, "name": cat.name}
 
 
 @app.post("/update/conversation/category")
-def update_conversation_category(conv_id: int, cat_id: int):
+def update_conversation_category(conv_id: int, cat_id: int, user=Depends(get_current_user)):
     try:
-        conv = db_utils.update_conversation_category(conv_id=conv_id, cat_id=cat_id)
+        conv = db_utils.update_conversation_category(
+            conv_id=conv_id, cat_id=cat_id, user_id=user["user_id"],)
     except IntegrityError as e:
         raise HTTPException(409, "Foreign key constraint failed") from e
-    except (LookupError, ValueError) as e:
-        raise HTTPException(404, f"Conversation or category not found: {e}") from e
+    except (LookupError, ValueError, NoResultFound) as e:
+        raise HTTPException(
+            404, f"Conversation or category not found: {e}") from e
 
     return {
         "id": conv.id,
@@ -276,12 +311,20 @@ def update_conversation_category(conv_id: int, cat_id: int):
 
 
 @app.post("/create/tables")
-def create_tables():
+def create_tables(_=Depends(get_current_user)):
     db.create_tables()
     return {"message": "Tables created"}
 
 
 @app.post("/drop/tables")
-def drop_tables():
+def drop_tables(_=Depends(get_current_user)):
     db.drop_tables()
     return {"message": "Tables dropped"}
+
+
+@app.get("/users/me")
+def get_me(user=Depends(get_current_user)):
+    return {
+        "user_id": user["user_id"],
+        "email": user.get("email"),
+    }

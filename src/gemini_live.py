@@ -216,6 +216,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
                 query,
                 transcript,
                 self.query_history,
+                self.ws.state.USER_ID,
             )
             print(tool_response)
             answer = (
