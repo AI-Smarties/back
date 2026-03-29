@@ -2,8 +2,6 @@
 Takes calendar payload and return structured context for Gemini Live.
 """
 
-from typing import Dict, Any
-
 def build_context(calendar_context):
     title = calendar_context.get('title')
     description = calendar_context.get('description')

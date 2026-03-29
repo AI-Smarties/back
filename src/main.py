@@ -111,9 +111,8 @@ async def handle_text(  # pylint: disable=too-many-return-statements
             )
             print(f"Invalid calendar context format: {LATEST_CALENDAR_CONTEXT}")
             return
-        print(f"Received calendar context: {LATEST_CALENDAR_CONTEXT}")
+        
         LATEST_CALENDAR_CONTEXT = build_context(LATEST_CALENDAR_CONTEXT)
-        print(f"Build context: {LATEST_CALENDAR_CONTEXT}")
 
         await ws.send_json(
             {"type": "control", "cmd": "calendar_context_received"}

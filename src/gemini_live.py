@@ -104,7 +104,7 @@ def amplify_chunk(pcm_chunk: bytes, gain: float = 2.0) -> bytes:
 
 
 class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
-    def __init__(self, ws, calendar_context):
+    def __init__(self, ws, calendar_context=None):
         self.ws = ws
         self._audio_queue: asyncio.Queue = asyncio.Queue(maxsize=10)
         self._task: asyncio.Task | None = None
