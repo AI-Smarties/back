@@ -1,6 +1,8 @@
 import asyncio
 from unittest.mock import Mock, AsyncMock
+
 import pytest
+
 from gemini_live import GeminiLiveSession, MODEL
 
 

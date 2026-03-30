@@ -117,12 +117,13 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         self._loop = None
         self._task: asyncio.Task | None = None
         self._fetch_semaphore = asyncio.Semaphore(2)
-        self._running = True
+        self._running = False
         self._client = None
         self._last_drop_log_time = 0.0
 
     def start(self):
         print(f"[Gemini Live] Starting session, mode: {'text' if self.text else 'audio'}")
+        self._running = True
         self._prepare_streaming_metadata()
         self._task = asyncio.create_task(self._run())
 
@@ -248,6 +249,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
                 query,
                 transcript,
                 self.query_history,
+                self.ws.state.USER_ID,
             )
             print(f"[Gemini Live] Fetch response: {tool_response}")
             answer = (

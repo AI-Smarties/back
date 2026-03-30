@@ -15,3 +15,5 @@ google-genai
 google-cloud-speech
 
 tzdata
+
+firebase_admin
