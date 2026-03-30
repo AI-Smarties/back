@@ -121,7 +121,7 @@ async def handle_text(  # pylint: disable=too-many-return-statements
             print(f"Calendar context data is not a dictionary: {data}")
             return
 
-        if ('title' not in data or 
+        if ('title' not in data or
             'start' not in data or
             'end' not in data or
             'description' not in data):
@@ -130,7 +130,7 @@ async def handle_text(  # pylint: disable=too-many-return-statements
             )
             print(f"Invalid calendar context format: {data}")
             return
-        
+
         context = build_context(data)
         ws.state.LATEST_CALENDAR_CONTEXT = context
         print(f"Received calendar context: {ws.state.LATEST_CALENDAR_CONTEXT}")
@@ -158,7 +158,7 @@ async def start_gemini_live(ws: WebSocket, user_id: str, calendar_context=None):
 
     if not ws.state.GEMINI_LIVE:
         ws.state.GEMINI_LIVE = GeminiLiveSession(ws, calendar_context)
-    
+
     else:
         ws.state.GEMINI_LIVE.calendar_context = calendar_context
 
