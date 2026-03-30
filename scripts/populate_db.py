@@ -6,6 +6,7 @@ for testing and demonstration purposes.
 """
 
 import sys
+import time
 from pathlib import Path
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -168,6 +169,7 @@ def populate_conversations(category_ids):
             information = f"Konteksti: {conv_data['name']}; Sisältö: {vector_text}"
             vec = create_vector(information, conv.id)
             print(f"    Created vector (ID: {vec.id})")
+            time.sleep(10)
 
         created_conv_ids.append(conv.id)
 

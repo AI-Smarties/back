@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
@@ -51,11 +52,15 @@ class ApiClient:
                 url += "?" + urlencode(clean, doseq=True)
         return url
 
+    token: str | None = None
+
     def request_json(self, method: str, path: str, params: dict[str, Any] | None = None) -> Any:
         url = self._url(path, params=params)
         body = b"" if method.upper() in {"POST", "PUT", "PATCH", "DELETE"} else None
         req = Request(url=url, data=body, method=method.upper())
         req.add_header("Accept", "application/json")
+        if self.token:
+            req.add_header("Authorization", f"Bearer {self.token}")
 
         try:
             with urlopen(req, timeout=self.timeout_s) as resp:  # nosec - intended for local/staging
@@ -299,6 +304,7 @@ def populate(api: ApiClient) -> None:
             information = f"Konteksti: {conv_data['name']}; Sisältö: {vector_text}"
             vec_id = create_vector(api, text=information, conv_id=conv_id)
             print(f"    Created vector (ID: {vec_id})")
+            time.sleep(10)
 
 
 def parse_args() -> argparse.Namespace:
@@ -319,12 +325,17 @@ def parse_args() -> argparse.Namespace:
         default=30.0,
         help="Per-request timeout in seconds (default: 30)",
     )
+    parser.add_argument(
+        "--token",
+        default=None,
+        help="Firebase ID token for Authorization header",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    api = ApiClient(base_url=args.base_url, timeout_s=args.timeout)
+    api = ApiClient(base_url=args.base_url, timeout_s=args.timeout, token=args.token)
 
     print("Starting database population via API...")
     print("=" * 60)
