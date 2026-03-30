@@ -102,7 +102,7 @@ async def handle_text(  # pylint: disable=too-many-return-statements
             print(f"Calendar context data is not a dictionary: {LATEST_CALENDAR_CONTEXT}")
             return
 
-        if ('title' not in LATEST_CALENDAR_CONTEXT or 
+        if ('title' not in LATEST_CALENDAR_CONTEXT or
             'start' not in LATEST_CALENDAR_CONTEXT or
             'end' not in LATEST_CALENDAR_CONTEXT or
             'description' not in LATEST_CALENDAR_CONTEXT):
@@ -111,7 +111,7 @@ async def handle_text(  # pylint: disable=too-many-return-statements
             )
             print(f"Invalid calendar context format: {LATEST_CALENDAR_CONTEXT}")
             return
-        
+
         LATEST_CALENDAR_CONTEXT = build_context(LATEST_CALENDAR_CONTEXT)
 
         await ws.send_json(
