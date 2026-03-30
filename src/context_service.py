@@ -10,7 +10,7 @@ def build_context(calendar_context):
 
     if start is None and end is None:
         context_type = 'general_conversation'
-        
+
     else:
         context_type = 'calendar_event'
 

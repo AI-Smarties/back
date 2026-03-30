@@ -167,11 +167,11 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
 
     HOW TO USE THIS CONTEXT:
 
-    If session context describes a calendar_event, treat the title and description as hints about the likely conversation topic. 
-    Use these hints to better judge whether a mention is relevant enough to call fetch_information. Do not assume that everything related to the topic is important. 
+    If session context describes a calendar_event, treat the title and description as hints about the likely conversation topic.
+    Use these hints to better judge whether a mention is relevant enough to call fetch_information. Do not assume that everything related to the topic is important.
     Always rely primarily on what is actually said in the conversation.
 
-    If session context is general_conversation, there is no useful calendar hint. 
+    If session context is general_conversation, there is no useful calendar hint.
     Behave normally and do not use calendar context to guide relevance decisions.
     """.strip()
         final_instruction = SYSTEM_INSTRUCTION + context_block
@@ -180,7 +180,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
             input_audio_transcription=genai.types.AudioTranscriptionConfig(),
             system_instruction=final_instruction,
             tools=TOOLS)
-        
+
         first_chunk = await self._audio_queue.get()
         if first_chunk is None:
             return
