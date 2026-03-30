@@ -133,7 +133,7 @@ async def extract_and_save_information_to_database(
         print("[Memory Extractor] Transcript empty, skipping extraction and summary generation")
         return
 
-    print("[Memory Extractor] extracting information from transcript")
+    print("[Memory Extractor] Extracting information from transcript")
 
     extracted_name = name
     extracted_vectors = []
@@ -145,7 +145,7 @@ async def extract_and_save_information_to_database(
             extracted_vectors = information_vectors.get("vectors", [])
             print(f"[Memory Extractor] {json.dumps(information_vectors, indent=2)}")
     except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"[Memory Extractor] memory_extractor_worker failed: {e}")
+        print(f"[Memory Extractor] Memory_extractor_worker failed: {e}")
 
     if not extracted_vectors:
         print("[Memory Extractor] No vectors extracted, skipping store")
@@ -164,7 +164,7 @@ async def extract_and_save_information_to_database(
             ),
         )
     except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"[Memory Extractor] store_data failed: {e}")
+        print(f"[Memory Extractor] Store_data failed: {e}")
 
 
 def store_data(transcript, vectors, user_id, name=None, conversation_id=None, cat_id=None): # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -193,16 +193,16 @@ def store_data(transcript, vectors, user_id, name=None, conversation_id=None, ca
         summary = generate_summary(transcript)
         if summary:
             update_conversation_summary(conv_id, summary, user_id)
-            print(f"[Memory Extractor] summary saved for conversation {conv_id}")
+            print(f"[Memory Extractor] Summary saved for conversation {conv_id}")
         else:
-            print(f"[Memory Extractor] no summary generated for conversation {conv_id}")
+            print(f"[Memory Extractor] No summary generated for conversation {conv_id}")
     except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"[Memory Extractor] summary generation failed for conversation {conv_id}: {e}")
+        print(f"[Memory Extractor] Summary generation failed for conversation {conv_id}: {e}")
 
     conv = get_conversation_by_id(conv_id, user_id)
     saved_vectors = get_vectors_by_conversation_id(conv_id, user_id)
 
-    print("[Memory Extractor]")
+    print("[Memory Extractor]:")
     print(f"conversation: {conv.id} {conv.name}")
     print(f"summary: {conv.summary}")
     print(f"category_id: {conv.category_id}")

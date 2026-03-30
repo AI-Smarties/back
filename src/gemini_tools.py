@@ -186,7 +186,7 @@ async def fetch_information(
         return {"status": "not_relevant", "thinking": ""}
 
     try:
-        print(f"[Gemini Tools] query: {query}\nthinking: {thinking_context}")
+        print(f"[Gemini Tools] Query: {query}\nthinking: {thinking_context}")
         print(f"[Gemini Tools] {json.dumps(query_history, indent=2)}")
 
         results = await asyncio.to_thread(
@@ -198,7 +198,7 @@ async def fetch_information(
         )
 
         if not results:
-            print("[Gemini Tools] no vector data")
+            print("[Gemini Tools] No vector data found")
             return {"status": "not_relevant", "thinking": ""}
 
         return await evaluate_db_data(

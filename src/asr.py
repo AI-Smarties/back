@@ -91,7 +91,7 @@ class StreamingASR:
                     while True:
                         chunk = my_q.get()
                         if chunk is None:
-                            print('[ASR] stream closed')
+                            print('[ASR] Stream closed')
                             break
                         chunk = amplify_chunk(chunk, gain=35.0)
                         yield cloud_speech.StreamingRecognizeRequest(audio=chunk)
@@ -108,7 +108,7 @@ class StreamingASR:
             except Exception as e:  # pylint: disable=broad-exception-caught
                 if self._stopped:
                     break
-                print(f"[ASR] stream error: '{e}', restarting with a new queue...")
+                print(f"[ASR] Stream error: '{e}', restarting with a new queue...")
 
             # Rotate queue: give push_audio a fresh queue for the next stream and
             # send None to the old one so the zombie generator unblocks and exits.

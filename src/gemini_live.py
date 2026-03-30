@@ -195,7 +195,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
             )
             self._task.cancel()
 
-        print(f"[Gemini Live] session total tokens: {self.tokens_used}")
+        print(f"[Gemini Live] Session total tokens: {self.tokens_used}")
         return self.transcript.strip()
 
     async def _run(self):
@@ -208,7 +208,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
                 model=MODEL,
                 config=CONFIG,
             ) as session:
-                print(f"[Gemini Live] connected with model {MODEL}")
+                print(f"[Gemini Live] Connected with model {MODEL}")
                 await session.send_realtime_input(
                     audio={"data": first_chunk, "mime_type": "audio/pcm;rate=16000"} if not self.text else None,  # pylint: disable=line-too-long
                     text=first_chunk if self.text else None
@@ -222,7 +222,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
                 except asyncio.CancelledError:
                     pass
         except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f"[Gemini Live] error: {e}")
+            print(f"[Gemini Live] Error: {e}")
         finally:
             await self._client.aio.aclose()
 
