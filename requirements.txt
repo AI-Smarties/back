@@ -13,3 +13,5 @@ pgvector
 vertexai
 google-genai
 tzdata
+
+firebase_admin

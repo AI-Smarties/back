@@ -109,7 +109,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         self.transcript: str = ""
         self.query_history: list[dict] = []
         self._fetch_semaphore = asyncio.Semaphore(2)
-        self._running = True
+        self.running = False
 
         self._dropped_audio_packets = 0
         self._last_drop_log_time = 0.0
@@ -117,6 +117,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         self.calendar_context = calendar_context
 
     async def start(self):
+        self.running = True
         self._task = asyncio.create_task(self._run())
 
     def _log_dropped_audio_if_needed(self):
@@ -145,7 +146,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
             self._audio_queue.put_nowait(None)
         except asyncio.QueueFull:
             pass
-        self._running = False
+        self.running = False
         if self._task:
             self._task.cancel()
             try:
@@ -237,6 +238,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
                 query,
                 transcript,
                 self.query_history,
+                self.ws.state.USER_ID,
             )
             print(tool_response)
             answer = (
@@ -251,7 +253,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
                     "answer": answer,
                 }
             )
-            if tool_response["status"] == "found" and self._running:
+            if tool_response["status"] == "found" and self.running:
                 await self.ws.send_json(
                     {"type": "ai", "data": tool_response["information"]}
                 )
