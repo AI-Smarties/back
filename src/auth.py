@@ -1,3 +1,5 @@
+import os
+
 import firebase_admin
 from firebase_admin import credentials, auth
 from fastapi import HTTPException, Header
@@ -9,7 +11,8 @@ def _init_firebase():
     global FIREBASE_APP # pylint: disable=global-statement
     if FIREBASE_APP is None:
         cred = credentials.ApplicationDefault()
-        FIREBASE_APP = firebase_admin.initialize_app(cred)
+        project_id = os.environ["FIREBASE_PROJECT_ID"]
+        FIREBASE_APP = firebase_admin.initialize_app(cred, {"projectId": project_id})
 
 
 def verify_token(auth_header: str):
