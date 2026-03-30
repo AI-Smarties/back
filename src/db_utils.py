@@ -5,19 +5,24 @@ from vertexai.language_models import TextEmbeddingModel
 import google
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
+from sqlalchemy.exc import NoResultFound
+
 from db import sessionlocal
 from models import Conversation, Vector, Category, EMBEDDING_DIMENSIONS
 
 TIMEZONE = "Europe/Helsinki"
 EMBEDDING_MODEL = None
 
+
 def load_embedding_model():
     global EMBEDDING_MODEL  # pylint: disable=global-statement
     _, project = google.auth.default()
     vertexai.init(project=project, location="europe-north1")
-    EMBEDDING_MODEL = TextEmbeddingModel.from_pretrained("text-multilingual-embedding-002")
+    EMBEDDING_MODEL = TextEmbeddingModel.from_pretrained(
+        "text-multilingual-embedding-002")
 
 # pylint: disable=no-member
+
 
 def create_vector(text, conv_id):
     if not EMBEDDING_MODEL:
@@ -31,105 +36,233 @@ def create_vector(text, conv_id):
         session.add(vec)
         return vec
 
-def delete_vector(vec_id):
+
+def delete_vector(vec_id, user_id):
     with sessionlocal.begin() as session:
-        vec = session.get_one(Vector, vec_id)
+        stmt = (
+            select(Vector)
+            .join(Conversation)
+            .where(
+                Vector.id == vec_id,
+                Conversation.user_id == user_id,
+            )
+        )
+        vec = session.scalars(stmt).one_or_none()
+        if vec is None:
+            raise NoResultFound
         session.delete(vec)
 
-def get_vector_by_id(vec_id):
-    with sessionlocal() as session:
-        return session.get(Vector, vec_id)
 
-def get_vectors_by_conversation_id(conv_id):
+def get_vector_by_id(vec_id, user_id):
     with sessionlocal() as session:
-        return session.scalars(select(Vector).where(Vector.conversation_id == conv_id)).all()
+        stmt = (
+            select(Vector)
+            .join(Conversation)
+            .where(
+                Vector.id == vec_id,
+                Conversation.user_id == user_id,
+            )
+        )
+        result = session.scalars(stmt).one_or_none()
+        if result is None:
+            raise NoResultFound
+        return result
 
-def get_vectors():
+
+def get_vectors_by_conversation_id(conv_id, user_id):
     with sessionlocal() as session:
-        return session.scalars(select(Vector)).all()
+        return session.scalars(
+            select(Vector)
+            .join(Conversation)
+            .where(
+                Vector.conversation_id == conv_id,
+                Conversation.user_id == user_id,
+            )
+        ).all()
 
-def search_vectors(text, limit=1, max_distance=0.5):
+
+def get_vectors(user_id):
+    with sessionlocal() as session:
+        return session.scalars(
+            select(Vector)
+            .join(Conversation)
+            .where(Conversation.user_id == user_id)
+        ).all()
+
+
+def search_vectors(text, user_id, limit=1, max_distance=0.5):
+    if user_id is None:
+        raise ValueError("user_id required")
+
     if not EMBEDDING_MODEL:
         load_embedding_model()
+
     embedding = EMBEDDING_MODEL.get_embeddings(
         [text],
         output_dimensionality=EMBEDDING_DIMENSIONS,
     )[0].values
+
     with sessionlocal() as session:
-        # how "relevant" the query response should be on scale of 0-2 (float)
-        # 0 = identical, 1 = unrelated, 2 = opposite
         distance = Vector.embedding.cosine_distance(embedding)
-        return session.scalars(
+
+        stmt = (
             select(Vector)
+            .join(Conversation)
             .options(joinedload(Vector.conversation))
-            .where(distance < max_distance)
-            .order_by(distance)
-            .limit(limit)
+            .where(
+                distance < max_distance,
+                Conversation.user_id == user_id,
+            )
+        )
+
+        return session.scalars(
+            stmt.order_by(distance).limit(limit)
         ).all()
 
-def create_conversation(name, summary=None, cat_id=None, timestamp=None):
+
+def create_conversation(name, user_id, summary=None, cat_id=None, timestamp=None):
+    if user_id is None:
+        raise ValueError("user_id required")
     if not timestamp:
         timestamp = datetime.now(ZoneInfo(TIMEZONE))
-    conv = Conversation(name=name, summary=summary, category_id=cat_id, timestamp=timestamp)
+    conv = Conversation(
+        name=name,
+        summary=summary,
+        category_id=cat_id,
+        timestamp=timestamp,
+        user_id=user_id,
+    )
     with sessionlocal.begin() as session:
         session.add(conv)
         return conv
 
-def update_conversation_summary(conv_id, summary):
+
+def update_conversation_summary(conv_id, summary, user_id):
     with sessionlocal.begin() as session:
-        conv = session.get_one(Conversation, conv_id)
+        stmt = select(Conversation).where(
+            Conversation.id == conv_id,
+            Conversation.user_id == user_id,
+        )
+        conv = session.scalars(stmt).one_or_none()
+        if conv is None:
+            raise NoResultFound
         conv.summary = summary
         session.add(conv)
         return conv
 
-def update_conversation_category(conv_id, cat_id):
+
+def update_conversation_category(conv_id, cat_id, user_id):
     with sessionlocal.begin() as session:
-        conv = session.get_one(Conversation, conv_id)
+        stmt = select(Conversation).where(
+            Conversation.id == conv_id,
+            Conversation.user_id == user_id,
+        )
+        conv = session.scalars(stmt).one_or_none()
+        if conv is None:
+            raise NoResultFound
         conv.category_id = cat_id
         session.add(conv)
         return conv
 
-def delete_conversation(conv_id):
+
+def delete_conversation(conv_id, user_id):
     with sessionlocal.begin() as session:
-        conv = session.get_one(Conversation, conv_id)
+        stmt = select(Conversation).where(
+            Conversation.id == conv_id,
+            Conversation.user_id == user_id,
+        )
+        conv = session.scalars(stmt).one_or_none()
+        if conv is None:
+            raise NoResultFound
         session.delete(conv)
 
-def get_conversation_by_id(conv_id):
-    with sessionlocal() as session:
-        return session.get(Conversation, conv_id)
 
-def get_conversations_by_category_id(cat_id):
+def get_conversation_by_id(conv_id, user_id):
     with sessionlocal() as session:
-        return session.scalars(select(Conversation).where(Conversation.category_id == cat_id)).all()
+        stmt = select(Conversation).where(
+            Conversation.id == conv_id,
+            Conversation.user_id == user_id,
+        )
+        result = session.scalars(stmt).one_or_none()
+        if result is None:
+            raise NoResultFound
+        return result
 
-def get_conversations():
+
+def get_conversations_by_category_id(cat_id, user_id):
     with sessionlocal() as session:
-        return session.scalars(select(Conversation)).all()
+        return session.scalars(
+            select(Conversation).where(
+                Conversation.category_id == cat_id,
+                Conversation.user_id == user_id,
+            )
+        ).all()
 
-def create_category(name):
-    cat = Category(name=name)
+
+def get_conversations(user_id):
+    with sessionlocal() as session:
+        return session.scalars(
+            select(Conversation).where(Conversation.user_id == user_id)
+        ).all()
+
+
+def create_category(name, user_id):
+    cat = Category(name=name, user_id=user_id)
     with sessionlocal.begin() as session:
         session.add(cat)
         return cat
 
-def delete_category_by_id(cat_id):
+
+def delete_category_by_id(cat_id, user_id):
     with sessionlocal.begin() as session:
-        cat = session.get_one(Category, cat_id)
+        stmt = select(Category).where(
+            Category.id == cat_id,
+            Category.user_id == user_id,
+        )
+        cat = session.scalars(stmt).one_or_none()
+        if cat is None:
+            raise NoResultFound
         session.delete(cat)
 
-def delete_category_by_name(name):
+
+def delete_category_by_name(name, user_id):
     with sessionlocal.begin() as session:
-        cat = session.scalars(select(Category).where(Category.name == name)).one()
+        stmt = select(Category).where(
+            Category.name == name,
+            Category.user_id == user_id,
+        )
+        cat = session.scalars(stmt).one_or_none()
+        if cat is None:
+            raise NoResultFound
         session.delete(cat)
 
-def get_category_by_id(cat_id):
-    with sessionlocal() as session:
-        return session.get(Category, cat_id)
 
-def get_category_by_name(name):
+def get_category_by_id(cat_id, user_id):
     with sessionlocal() as session:
-        return session.scalars(select(Category).where(Category.name == name)).one_or_none()
+        stmt = select(Category).where(
+            Category.id == cat_id,
+            Category.user_id == user_id,
+        )
+        result = session.scalars(stmt).one_or_none()
+        if result is None:
+            raise NoResultFound
+        return result
 
-def get_categories():
+
+def get_category_by_name(name, user_id):
     with sessionlocal() as session:
-        return session.scalars(select(Category)).all()
+        stmt = select(Category).where(
+            Category.name == name,
+            Category.user_id == user_id,
+        )
+        result = session.scalars(stmt).one_or_none()
+        if result is None:
+            raise NoResultFound
+        return result
+
+
+def get_categories(user_id):
+    with sessionlocal() as session:
+        return session.scalars(
+            select(Category).where(Category.user_id == user_id)
+        ).all()

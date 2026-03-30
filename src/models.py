@@ -1,5 +1,5 @@
 from pgvector.sqlalchemy import VECTOR
-from sqlalchemy import Column, Integer, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, Text, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from db import Base  # pylint: disable=cyclic-import
 
@@ -30,6 +30,7 @@ class Conversation(Base):
     __tablename__ = "conversations"
 
     id = Column(Integer, primary_key=True)
+    user_id = Column(Text, nullable=False, index=True)
     timestamp = Column(DateTime(timezone=True), nullable=False)
     name = Column(Text, nullable=False)
     summary = Column(Text)
@@ -48,6 +49,11 @@ class Category(Base):
     __tablename__ = "categories"
 
     id = Column(Integer, primary_key=True)
-    name = Column(Text, nullable=False, unique=True, index=True)
+    user_id = Column(Text, nullable=False, index=True)
+    name = Column(Text, nullable=False, index=True)
 
-    conversations = relationship("Conversation", back_populates="category",)
+    __table_args__ = (
+        UniqueConstraint("name", "user_id"),
+    )
+
+    conversations = relationship("Conversation", back_populates="category")
