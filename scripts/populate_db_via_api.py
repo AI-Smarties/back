@@ -304,7 +304,7 @@ def populate(api: ApiClient) -> None:
             information = f"Konteksti: {conv_data['name']}; Sisältö: {vector_text}"
             vec_id = create_vector(api, text=information, conv_id=conv_id)
             print(f"    Created vector (ID: {vec_id})")
-            time.sleep(10)
+            time.sleep(13)
 
 
 def parse_args() -> argparse.Namespace:

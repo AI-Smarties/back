@@ -169,7 +169,7 @@ def populate_conversations(category_ids):
             information = f"Konteksti: {conv_data['name']}; Sisältö: {vector_text}"
             vec = create_vector(information, conv.id)
             print(f"    Created vector (ID: {vec.id})")
-            time.sleep(10)
+            time.sleep(13)
 
         created_conv_ids.append(conv.id)
 

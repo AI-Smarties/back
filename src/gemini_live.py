@@ -1,9 +1,10 @@
 import asyncio
 import json
+import os
 import time
 import numpy as np
 
-from google import auth, genai
+from google import genai
 
 from gemini_tools import fetch_information
 
@@ -163,7 +164,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         if first_chunk is None:
             return
 
-        _, project = auth.default()
+        project = os.environ["GOOGLE_CLOUD_PROJECT"]
         client = genai.Client(
             vertexai=True,
             project=project,
