@@ -1,9 +1,11 @@
-# pylint: disable=too-few-public-methods,unused-argument
-
 from unittest.mock import patch
+
 import pytest
+from sqlalchemy.exc import OperationalError
+
 from gemini_tools import fetch_information
 import db_utils
+import db
 
 
 class TestFetchInformation:
@@ -88,15 +90,12 @@ class TestFetchInformation:
 
     @pytest.mark.asyncio
     async def test_fetch_information_user_isolation(self, monkeypatch):
-        from sqlalchemy.exc import OperationalError
-        import db
-
         try:
             db.create_tables()
         except OperationalError:
             pytest.skip("Database not available")
 
-        class _StubEmbeddingModel:
+        class _StubEmbeddingModel:  # pylint: disable=too-few-public-methods,unused-argument
             def get_embeddings(self, texts, output_dimensionality):
                 embedding = [0.0] * output_dimensionality
                 embedding[0] = 1.0

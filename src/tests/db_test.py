@@ -1,5 +1,6 @@
 import db
 
+
 def test_db_module_exports_expected_symbols():
     assert hasattr(db, "engine")
     assert hasattr(db, "sessionlocal")

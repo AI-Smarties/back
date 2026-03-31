@@ -1,12 +1,12 @@
 from sqlalchemy.exc import OperationalError
-import db
 import pytest
-
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
+import db
 from main import app
 from auth import get_current_user
+
 
 client = TestClient(app)
 
