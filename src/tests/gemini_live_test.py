@@ -54,11 +54,11 @@ class TestGeminiLiveSession:
         """Test that audio is silently dropped when queue is full"""
         pcm_chunk = b"\x00\x01" * 4  # valid int16 PCM bytes
         # Fill the queue
-        for _ in range(10):
+        for _ in range(session._queue.maxsize):
             session.push_data(pcm_chunk)
         # Try to add one more
         session.push_data(pcm_chunk)
-        assert session._queue.qsize() == 10
+        assert session._queue.qsize() == session._queue.maxsize
 
     @pytest.mark.asyncio
     async def test_stop_adds_none_to_queue(self, session):
