@@ -1,10 +1,9 @@
 import asyncio
 import json
-import os
 import time
 import numpy as np
 
-from google import genai
+from google import genai, auth
 
 from gemini_tools import fetch_information
 
@@ -246,12 +245,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         except Exception as e:  # pylint: disable=broad-exception-caught
             print(f"[Gemini Live] Error: {e}")
         finally:
-            await self._
-            
-            
-            
-            
-            .aio.aclose()
+            await self._client.aio.aclose()
 
     async def _send(self, session):
         while True:
