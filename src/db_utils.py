@@ -1,4 +1,3 @@
-import os
 from datetime import datetime
 
 from zoneinfo import ZoneInfo
@@ -6,6 +5,7 @@ import vertexai
 from vertexai.language_models import TextEmbeddingModel
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
+from google import auth
 
 from db import sessionlocal
 from models import Conversation, Vector, Category, EMBEDDING_DIMENSIONS
@@ -20,7 +20,7 @@ EMBEDDING_MODEL = None
 
 def load_embedding_model():
     global EMBEDDING_MODEL  # pylint: disable=global-statement
-    project = os.environ["GOOGLE_CLOUD_PROJECT"]
+    _, project = auth.default()
     vertexai.init(project=project, location="europe-north1")
     EMBEDDING_MODEL = TextEmbeddingModel.from_pretrained(
         "text-multilingual-embedding-002")
