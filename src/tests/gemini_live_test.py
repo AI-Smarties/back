@@ -42,7 +42,7 @@ class TestGeminiLiveSession:
         assert session.ws == mock_websocket
         assert session.tokens_used == 0
         assert session._task is None
-        assert session._queue.maxsize == 10
+        assert session._queue.maxsize == 200
 
     def test_push_data_adds_to_queue(self, session):
         """Test that audio chunks are added to the queue"""
