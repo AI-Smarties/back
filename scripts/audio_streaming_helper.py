@@ -10,24 +10,31 @@ BYTES_PER_SAMPLE = 2  # LINEAR16
 CHUNK_DURATION = 0.1  # seconds
 CHUNK_BYTES = int(SAMPLE_RATE * BYTES_PER_SAMPLE * CHUNK_DURATION)  # 3200
 
-# pylint: disable=consider-using-with
 async def stream(url: str, path: str):
-    audio = open(path, "rb").read()
+    audio = open(path, "rb").read()  # pylint: disable=consider-using-with
     print(f"Connecting to {url} ...")
 
     async with websockets.connect(url) as ws:
         await ws.recv()  # ready
-        await ws.send(json.dumps({"type": "control", "cmd": "start"})) # start asr
+        await ws.send(json.dumps({"type": "control", "cmd": "start"}))  # start asr
+
+        # Wait until the backend confirms ASR is started before streaming audio.
+        while True:
+            raw = await ws.recv()
+            msg = json.loads(raw)
+            print(f"\r[WS MSG] {msg}", flush=True)
+            if msg.get("type") == "control" and msg.get("cmd") == "asr_started":
+                break
 
         async def recv_loop(): # receive events from ws
             try:
                 async for raw in ws:
                     msg = json.loads(raw)
-                    print(f"\r[WS MSG] {msg}", flush=True)
+                    print(msg, flush=True)
             except websockets.exceptions.ConnectionClosed:
                 pass
 
-        asyncio.create_task(recv_loop()) # add listener for events
+        asyncio.create_task(recv_loop())  # add listener for events
         ## mock audiofile streaming as it would stream through ws
         total_chunks = (len(audio) + CHUNK_BYTES - 1) // CHUNK_BYTES
         start = time.perf_counter()
