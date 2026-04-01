@@ -102,7 +102,7 @@ def amplify_chunk(pcm_chunk: bytes, gain: float = 2.0) -> bytes:
 
 
 class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
-    def __init__(self, ws, text: bool = False, calendar_context=None):
+    def __init__(self, ws, text: bool = False, calendar_context={}):  # pylint: disable=dangerous-default-value
         self.ws = ws
         self.text = text
         self.tokens_used = 0
@@ -117,6 +117,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         self._client = None
         self._last_drop_log_time = 0.0
         self.calendar_context = calendar_context
+        self.config = None
 
 
     def start(self):
@@ -132,6 +133,28 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
             vertexai=True,
             project=project,
             location="europe-north1",
+        )
+        context_block = f"""
+        SESSION CONTEXT:
+        context_type: {self.calendar_context.get('context_type')}
+        title: {self.calendar_context.get('title')}
+        description: {self.calendar_context.get('description')}
+
+        HOW TO USE THIS CONTEXT:
+
+        If session context describes a calendar_event, treat the title and description as hints about the likely conversation topic.
+        Use these hints to better judge whether a mention is relevant enough to call fetch_information. Do not assume that everything related to the topic is important.
+        Always rely primarily on what is actually said in the conversation.
+
+        If session context is general_conversation, there is no useful calendar hint.
+        Behave normally and do not use calendar context to guide relevance decisions.
+        """
+        final_instruction = SYSTEM_INSTRUCTION + "\n" + context_block
+
+        self.config = genai.types.LiveConnectConfig(
+            input_audio_transcription=genai.types.AudioTranscriptionConfig(),
+            system_instruction=final_instruction if self.calendar_context else SYSTEM_INSTRUCTION,
+            tools=TOOLS,
         )
 
     def _log_dropped_packet_if_needed(self):
@@ -197,30 +220,6 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         return self.transcript.strip()
 
     async def _run(self):
-        session_context = self.calendar_context or {}
-        context_block = f"""
-    SESSION CONTEXT:
-    context_type: {session_context.get('context_type')}
-    title: {session_context.get('title')}
-    description: {session_context.get('description')}
-
-    HOW TO USE THIS CONTEXT:
-
-    If session context describes a calendar_event, treat the title and description as hints about the likely conversation topic.
-    Use these hints to better judge whether a mention is relevant enough to call fetch_information. Do not assume that everything related to the topic is important.
-    Always rely primarily on what is actually said in the conversation.
-
-    If session context is general_conversation, there is no useful calendar hint.
-    Behave normally and do not use calendar context to guide relevance decisions.
-    """.strip()
-        final_instruction = SYSTEM_INSTRUCTION + context_block
-
-        config = genai.types.LiveConnectConfig(
-            input_audio_transcription=genai.types.AudioTranscriptionConfig(),
-            system_instruction=final_instruction,
-            tools=TOOLS)
-
-
         first_chunk = await self._queue.get()
         if first_chunk is None:
             return
@@ -228,7 +227,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         try:
             async with self._client.aio.live.connect(
                 model=MODEL,
-                config=config,
+                config=self.config,
             ) as session:
                 print(f"[Gemini Live] Connected with model {MODEL}")
                 await session.send_realtime_input(
