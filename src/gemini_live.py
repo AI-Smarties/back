@@ -3,7 +3,7 @@ import json
 import time
 import numpy as np
 
-from google import auth, genai
+from google import genai, auth
 
 from gemini_tools import fetch_information
 

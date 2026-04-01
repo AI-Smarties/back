@@ -22,26 +22,26 @@ def test_build_context():
         "end": None
     }
 
-    assert build_context(calendar_context_1) == { 
+    assert build_context(calendar_context_1) == {
         "context_type": 'calendar_event',
         "title": 'Business meeting',
         "description": 'Discussing Q3 finances',
         "start": '2026-03-26T09:00:00.000+0200',
         "end": '2026-03-26T10:00:00.000+0200'
-        }
+    }
 
-    assert build_context(calendar_context_2) == { 
+    assert build_context(calendar_context_2) == {
         "context_type": 'general_conversation',
         "title": None,
         "description": None,
         "start": None,
         "end": None
-        }
+    }
 
-    assert build_context(calendar_context_3) == { 
+    assert build_context(calendar_context_3) == {
         "context_type": 'general_conversation',
         "title": 'Budget meeting',
         "description": None,
         "start": None,
         "end": None
-        }
+    }
