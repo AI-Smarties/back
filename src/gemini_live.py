@@ -127,7 +127,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         self._task = asyncio.create_task(self._run())
 
     def _prepare_streaming_metadata(self):
-        self._loop = asyncio.get_event_loop()
+        self._loop = asyncio.get_running_loop()
         _, project = auth.default()
         self._client = genai.Client(
             vertexai=True,
