@@ -1,13 +1,14 @@
 from pgvector.sqlalchemy import VECTOR
 from sqlalchemy import Column, Integer, Text, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
+
 from db import Base  # pylint: disable=cyclic-import
 
 
-EMBEDDING_DIMENSIONS = 768
-
-
 # pylint: disable=too-few-public-methods
+
+
+EMBEDDING_DIMENSIONS = 768
 
 
 class Vector(Base):
