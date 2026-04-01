@@ -205,10 +205,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         self._running = False
 
         # Request graceful shutdown: _send() and _run() both exit when they read None.
-        try:
-            self._loop.call_soon_threadsafe(self._request_shutdown)
-        except RuntimeError:
-            self._request_shutdown()
+        self._request_shutdown()
 
         if self._task:
             self._task.add_done_callback(
