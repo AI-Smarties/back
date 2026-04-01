@@ -79,6 +79,59 @@ def test_server_handles_audio_before_start():
         assert data["type"] == "error"
         assert data["message"] == "ASR not started"
 
+def test_calendar_context_null_event():
+    with client.websocket_connect("/ws/?token=test-token") as websocket:
+        websocket.receive_json()  # ready signal
+        websocket.send_json({
+            "type": "calendar_context",
+            "data": {
+                "title": "General Conversation",
+                "description": None,
+                "start": None,
+                "end": None
+            }
+        })
+
+        data = websocket.receive_json()
+        assert data["type"] == "control"
+        assert data["cmd"] == "calendar_context_received"
+
+
+def test_calendar_context_real_event():
+    with client.websocket_connect("/ws/?token=test-token") as websocket:
+        websocket.receive_json()  # ready signal
+        websocket.send_json({
+            "type": "calendar_context",
+            "data": {
+                "title": "Team sync",
+                "description": "Weekly check-in",
+                "start": "2026-03-26T10:00:00.000+0200",
+                "end": "2026-03-26T10:45:00.000+0200"
+            }
+        })
+
+        data = websocket.receive_json()
+        assert data["type"] == "control"
+        assert data["cmd"] == "calendar_context_received"
+
+
+def test_calendar_context_missing_fields():
+    with client.websocket_connect("/ws/?token=test-token") as websocket:
+        websocket.receive_json()  # ready signal
+        websocket.send_json({
+            "type": "calendar_context",
+            "data": {
+                "title": None,
+                "description": None,
+                "start": None
+                #missing end
+            }
+        })
+
+        data = websocket.receive_json()
+        assert data["type"] == "error"
+        assert data["message"] == "Invalid calendar context format"
+
 
 class ASRInstanceBuilder:  # pylint: disable=protected-access
     def __init__(self):

@@ -10,6 +10,8 @@ from asr import StreamingASR
 from memory_extractor import extract_and_save_information_to_database
 import db_utils
 import db
+
+from context_service import build_context
 from gemini_live import GeminiLiveSession
 from auth import get_current_user, verify_token
 
@@ -39,9 +41,10 @@ async def audio_ws(ws: WebSocket):
         await ws.close(code=1008)
         return
 
+
     ws.state.USER_ID = decoded["uid"]
     ws.state.ASR = None
-    ws.state.LATEST_CALENDAR_CONTENT = None
+    ws.state.LATEST_CALENDAR_CONTEXT = None
     ws.state.SELECTED_CATEGORY_ID = None
 
     await ws.accept()
@@ -102,8 +105,29 @@ async def handle_text(text: str, ws: WebSocket):  # pylint: disable=too-many-ret
         return
 
     if payload_type == "calendar_context":
-        ws.state.LATEST_CALENDAR_CONTENT = payload.get("data")
-        print(f"[FastAPI] Received calendar context: {ws.state.LATEST_CALENDAR_CONTENT}")
+        data = payload.get("data")
+
+        if not isinstance(data, dict):
+            await ws.send_json(
+                {"type": "error", "message": "Calendar context data must be a dictionary"}
+            )
+            print(f"Calendar context data is not a dictionary: {data}")
+            return
+
+        if ('title' not in data or
+            'start' not in data or
+            'end' not in data or
+            'description' not in data):
+            await ws.send_json(
+                {"type": "error", "message": "Invalid calendar context format"}
+            )
+            print(f"Invalid calendar context format: {data}")
+            return
+
+        context = build_context(data)
+        ws.state.LATEST_CALENDAR_CONTEXT = context
+        print(f"[FastAPI] Received calendar context: {ws.state.LATEST_CALENDAR_CONTEXT}")
+
         await ws.send_json(
             {"type": "control", "cmd": "calendar_context_received"}
         )
@@ -124,7 +148,11 @@ async def handle_text(text: str, ws: WebSocket):  # pylint: disable=too-many-ret
 async def start_asr(ws: WebSocket, notify: bool = True):
     if ws.state.ASR:
         await asyncio.to_thread(ws.state.ASR.stop)
-    gemini_live = GeminiLiveSession(ws, text=True)
+    gemini_live = GeminiLiveSession(
+        ws,
+        text=True,
+        calendar_context=ws.state.LATEST_CALENDAR_CONTEXT,
+    )
     ws.state.ASR = StreamingASR(gemini_live)
     await asyncio.to_thread(ws.state.ASR.start)
     if not notify:
