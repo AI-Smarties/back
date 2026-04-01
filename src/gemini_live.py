@@ -109,7 +109,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         self.transcript: str = ""
         self.query_history: list[dict] = []
         self.dropped_packets = 0
-        self._queue: asyncio.Queue = asyncio.Queue(maxsize=10)
+        self._queue: asyncio.Queue = asyncio.Queue(maxsize=200)
         self._loop = loop
         self._task: asyncio.Task | None = None
         self._fetch_semaphore = asyncio.Semaphore(2)
