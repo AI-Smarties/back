@@ -41,7 +41,6 @@ async def audio_ws(ws: WebSocket):
         await ws.close(code=1008)
         return
 
-    user_id = decoded["uid"]
 
     ws.state.USER_ID = decoded["uid"]
     ws.state.ASR = None
@@ -149,7 +148,11 @@ async def handle_text(text: str, ws: WebSocket):  # pylint: disable=too-many-ret
 async def start_asr(ws: WebSocket, notify: bool = True):
     if ws.state.ASR:
         await asyncio.to_thread(ws.state.ASR.stop)
-    gemini_live = GeminiLiveSession(ws, text=True, calendar_context=ws.state.LATEST_CALENDAR_CONTEXT)
+    gemini_live = GeminiLiveSession(
+        ws,
+        text=True,
+        calendar_context=ws.state.LATEST_CALENDAR_CONTEXT,
+    )
     ws.state.ASR = StreamingASR(gemini_live)
     await asyncio.to_thread(ws.state.ASR.start)
     if not notify:
