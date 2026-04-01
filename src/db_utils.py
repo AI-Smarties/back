@@ -1,14 +1,18 @@
-import os
 from datetime import datetime
+
 from zoneinfo import ZoneInfo
 import vertexai
 from vertexai.language_models import TextEmbeddingModel
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
-from sqlalchemy.exc import NoResultFound
+from google import auth
 
 from db import sessionlocal
 from models import Conversation, Vector, Category, EMBEDDING_DIMENSIONS
+
+
+# pylint: disable=no-member
+
 
 TIMEZONE = "Europe/Helsinki"
 EMBEDDING_MODEL = None
@@ -16,12 +20,10 @@ EMBEDDING_MODEL = None
 
 def load_embedding_model():
     global EMBEDDING_MODEL  # pylint: disable=global-statement
-    project = os.environ["GOOGLE_CLOUD_PROJECT"]
+    _, project = auth.default()
     vertexai.init(project=project, location="europe-north1")
     EMBEDDING_MODEL = TextEmbeddingModel.from_pretrained(
         "text-multilingual-embedding-002")
-
-# pylint: disable=no-member
 
 
 def create_vector(text, conv_id):
@@ -47,9 +49,7 @@ def delete_vector(vec_id, user_id):
                 Conversation.user_id == user_id,
             )
         )
-        vec = session.scalars(stmt).one_or_none()
-        if vec is None:
-            raise NoResultFound
+        vec = session.scalars(stmt).one()
         session.delete(vec)
 
 
@@ -63,9 +63,7 @@ def get_vector_by_id(vec_id, user_id):
                 Conversation.user_id == user_id,
             )
         )
-        result = session.scalars(stmt).one_or_none()
-        if result is None:
-            raise NoResultFound
+        result = session.scalars(stmt).one()
         return result
 
 
@@ -143,9 +141,7 @@ def update_conversation_summary(conv_id, summary, user_id):
             Conversation.id == conv_id,
             Conversation.user_id == user_id,
         )
-        conv = session.scalars(stmt).one_or_none()
-        if conv is None:
-            raise NoResultFound
+        conv = session.scalars(stmt).one()
         conv.summary = summary
         session.add(conv)
         return conv
@@ -157,9 +153,7 @@ def update_conversation_category(conv_id, cat_id, user_id):
             Conversation.id == conv_id,
             Conversation.user_id == user_id,
         )
-        conv = session.scalars(stmt).one_or_none()
-        if conv is None:
-            raise NoResultFound
+        conv = session.scalars(stmt).one()
         conv.category_id = cat_id
         session.add(conv)
         return conv
@@ -171,9 +165,7 @@ def delete_conversation(conv_id, user_id):
             Conversation.id == conv_id,
             Conversation.user_id == user_id,
         )
-        conv = session.scalars(stmt).one_or_none()
-        if conv is None:
-            raise NoResultFound
+        conv = session.scalars(stmt).one()
         session.delete(conv)
 
 
@@ -183,9 +175,7 @@ def get_conversation_by_id(conv_id, user_id):
             Conversation.id == conv_id,
             Conversation.user_id == user_id,
         )
-        result = session.scalars(stmt).one_or_none()
-        if result is None:
-            raise NoResultFound
+        result = session.scalars(stmt).one()
         return result
 
 
@@ -219,9 +209,7 @@ def delete_category_by_id(cat_id, user_id):
             Category.id == cat_id,
             Category.user_id == user_id,
         )
-        cat = session.scalars(stmt).one_or_none()
-        if cat is None:
-            raise NoResultFound
+        cat = session.scalars(stmt).one()
         session.delete(cat)
 
 
@@ -231,9 +219,7 @@ def delete_category_by_name(name, user_id):
             Category.name == name,
             Category.user_id == user_id,
         )
-        cat = session.scalars(stmt).one_or_none()
-        if cat is None:
-            raise NoResultFound
+        cat = session.scalars(stmt).one()
         session.delete(cat)
 
 
@@ -243,9 +229,7 @@ def get_category_by_id(cat_id, user_id):
             Category.id == cat_id,
             Category.user_id == user_id,
         )
-        result = session.scalars(stmt).one_or_none()
-        if result is None:
-            raise NoResultFound
+        result = session.scalars(stmt).one()
         return result
 
 
@@ -255,9 +239,7 @@ def get_category_by_name(name, user_id):
             Category.name == name,
             Category.user_id == user_id,
         )
-        result = session.scalars(stmt).one_or_none()
-        if result is None:
-            raise NoResultFound
+        result = session.scalars(stmt).one()
         return result
 
 

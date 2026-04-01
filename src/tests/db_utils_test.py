@@ -1,6 +1,8 @@
 from types import SimpleNamespace
+
 import pytest
 from sqlalchemy.exc import IntegrityError, OperationalError, NoResultFound
+
 import db
 import db_utils
 

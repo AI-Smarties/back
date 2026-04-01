@@ -6,18 +6,20 @@ import json
 from fastapi import FastAPI, WebSocket, HTTPException, Depends
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
-from gemini_live import GeminiLiveSession
+from asr import StreamingASR
 from memory_extractor import extract_and_save_information_to_database
 import db_utils
 import db
 
+from context_service import build_context
+from gemini_live import GeminiLiveSession
 from auth import get_current_user, verify_token
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     """Create database tables automatically when the app starts."""
-    print("Creating database tables on startup (if missing)")
+    print("[FastAPI] Creating database tables on startup (if missing)")
     db.create_tables()
     yield
 
@@ -39,11 +41,10 @@ async def audio_ws(ws: WebSocket):
         await ws.close(code=1008)
         return
 
-    user_id = decoded["uid"]
 
-    ws.state.USER_ID = user_id
-    ws.state.GEMINI_LIVE = None
-    ws.state.LATEST_CALENDAR_CONTENT = None
+    ws.state.USER_ID = decoded["uid"]
+    ws.state.ASR = None
+    ws.state.LATEST_CALENDAR_CONTEXT = None
     ws.state.SELECTED_CATEGORY_ID = None
 
     await ws.accept()
@@ -55,39 +56,32 @@ async def audio_ws(ws: WebSocket):
                 break
             if msg["type"] == "websocket.receive":
                 if "bytes" in msg:
-                    if not ws.state.GEMINI_LIVE:
+                    if not ws.state.ASR:
                         await ws.send_json(
-                            {"type": "error", "message": "Gemini Live not started"}
+                            {"type": "error", "message": "ASR not started"}
                         )
-                        print("Received audio chunk but Gemini Live not started")
+                        print("[FastAPI] Received audio chunk but ASR not started")
                         continue
-
-                    ws.state.GEMINI_LIVE.push_audio(msg["bytes"])
-
-                elif "text" in msg:
-                    await handle_text(msg["text"], ws, ws.state.USER_ID)
+                    ws.state.ASR.push_audio(msg["bytes"])
+                if "text" in msg:
+                    await handle_text(msg["text"], ws)
     finally:
-        await stop_gemini_live(ws)
-        ws.state.GEMINI_LIVE = None
+        # The client may already be disconnected; don't attempt to send confirmation
+        await stop_asr(ws, notify=False)
 
 
-async def handle_text(  # pylint: disable=too-many-return-statements
-    text: str,
-    ws: WebSocket,
-    user_id: str,
-):
-
+async def handle_text(text: str, ws: WebSocket):  # pylint: disable=too-many-return-statements
     try:
         payload = json.loads(text)
     except json.JSONDecodeError:
         await ws.send_json({"type": "error", "message": "Invalid JSON"})
-        print(f"Invalid JSON: {text}")
+        print(f"[FastAPI] Invalid JSON: {text}")
         return
 
     payload_type = payload.get("type")
     if payload_type is None:
         await ws.send_json({"type": "error", "message": "Missing type in message"})
-        print(f"Missing type in message: {payload}")
+        print(f"[FastAPI] Missing type in message: {payload}")
         return
 
     if payload_type == "control":
@@ -96,23 +90,44 @@ async def handle_text(  # pylint: disable=too-many-return-statements
             await ws.send_json(
                 {"type": "error", "message": "Missing command in control message"}
             )
-            print(f"Missing command in control message: {payload}")
+            print(f"[FastAPI] Missing command in control message: {payload}")
             return
 
         if cmd == "start":
-            await start_gemini_live(ws, user_id)
+            await start_asr(ws)
             return
         if cmd == "stop":
-            await stop_gemini_live(ws)
+            await stop_asr(ws)
             return
 
         await ws.send_json({"type": "error", "message": "Unknown command"})
-        print(f"Unknown command: {cmd}")
+        print(f"[FastAPI] Unknown command: {cmd}")
         return
 
     if payload_type == "calendar_context":
-        ws.state.LATEST_CALENDAR_CONTENT = payload.get("data")
-        print(f"Received calendar context: {ws.state.LATEST_CALENDAR_CONTENT}")
+        data = payload.get("data")
+
+        if not isinstance(data, dict):
+            await ws.send_json(
+                {"type": "error", "message": "Calendar context data must be a dictionary"}
+            )
+            print(f"Calendar context data is not a dictionary: {data}")
+            return
+
+        if ('title' not in data or
+            'start' not in data or
+            'end' not in data or
+            'description' not in data):
+            await ws.send_json(
+                {"type": "error", "message": "Invalid calendar context format"}
+            )
+            print(f"Invalid calendar context format: {data}")
+            return
+
+        context = build_context(data)
+        ws.state.LATEST_CALENDAR_CONTEXT = context
+        print(f"[FastAPI] Received calendar context: {ws.state.LATEST_CALENDAR_CONTEXT}")
+
         await ws.send_json(
             {"type": "control", "cmd": "calendar_context_received"}
         )
@@ -120,37 +135,35 @@ async def handle_text(  # pylint: disable=too-many-return-statements
 
     if payload_type == "selected_category":
         ws.state.SELECTED_CATEGORY_ID = payload.get("category_id")
-        print(f"Received selected category id: {ws.state.SELECTED_CATEGORY_ID}")
+        print(f"[FastAPI] Received selected category id: {ws.state.SELECTED_CATEGORY_ID}")
         await ws.send_json(
             {"type": "control", "cmd": "selected_category_received"}
         )
         return
 
     await ws.send_json({"type": "error", "message": "Unknown message type"})
-    print(f"Unknown message type: {payload_type}")
+    print(f"[FastAPI] Unknown message type: {payload_type}")
 
 
-async def start_gemini_live(ws: WebSocket, user_id: str):
-    ws.state.USER_ID = user_id
+async def start_asr(ws: WebSocket, notify: bool = True):
+    if ws.state.ASR:
+        await asyncio.to_thread(ws.state.ASR.stop)
+    gemini_live = GeminiLiveSession(
+        ws,
+        asyncio.get_running_loop(),
+        text=True,
+        calendar_context=ws.state.LATEST_CALENDAR_CONTEXT,
+    )
+    ws.state.ASR = StreamingASR(gemini_live)
+    await asyncio.to_thread(ws.state.ASR.start)
+    if not notify:
+        return
+    await ws.send_json({"type": "control", "cmd": "asr_started"})
 
-    print("Starting Gemini Live")
 
-    if not ws.state.GEMINI_LIVE:
-        ws.state.GEMINI_LIVE = GeminiLiveSession(ws)
-
-    if not ws.state.GEMINI_LIVE.running:
-        await ws.state.GEMINI_LIVE.start()
-
-
-async def stop_gemini_live(ws: WebSocket):
-    if ws.state.GEMINI_LIVE and ws.state.GEMINI_LIVE.running:
-        print("Stopping Gemini Live")
-
-        transcript = await ws.state.GEMINI_LIVE.stop()
-        print(transcript)
-
-        transcript = transcript.strip()
-
+async def stop_asr(ws: WebSocket, notify: bool = True):
+    if ws.state.ASR:
+        transcript = await asyncio.to_thread(ws.state.ASR.stop)
         if transcript:
             asyncio.create_task(
                 extract_and_save_information_to_database(
@@ -159,6 +172,10 @@ async def stop_gemini_live(ws: WebSocket):
                     cat_id=ws.state.SELECTED_CATEGORY_ID,
                 )
             )
+    ws.state.ASR = None
+    if not notify:
+        return
+    await ws.send_json({"type": "control", "cmd": "asr_stopped"})
 
 
 @app.get("/get/vectors")
@@ -298,8 +315,7 @@ def update_conversation_category(conv_id: int, cat_id: int, user=Depends(get_cur
     except IntegrityError as e:
         raise HTTPException(409, "Foreign key constraint failed") from e
     except (LookupError, ValueError, NoResultFound) as e:
-        raise HTTPException(
-            404, f"Conversation or category not found: {e}") from e
+        raise HTTPException(404, f"Conversation or category not found: {e}") from e
 
     return {
         "id": conv.id,
