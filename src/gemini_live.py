@@ -102,7 +102,7 @@ def amplify_chunk(pcm_chunk: bytes, gain: float = 2.0) -> bytes:
 
 
 class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
-    def __init__(self, ws, text: bool = False, calendar_context={}):  # pylint: disable=dangerous-default-value
+    def __init__(self, ws, loop = None, text: bool = False, calendar_context={}):  # pylint: disable=dangerous-default-value
         self.ws = ws
         self.text = text
         self.tokens_used = 0
@@ -110,7 +110,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         self.query_history: list[dict] = []
         self.dropped_packets = 0
         self._queue: asyncio.Queue = asyncio.Queue(maxsize=10)
-        self._loop = None
+        self._loop = loop
         self._task: asyncio.Task | None = None
         self._fetch_semaphore = asyncio.Semaphore(2)
         self._running = False
@@ -127,7 +127,6 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         self._task = asyncio.create_task(self._run())
 
     def _prepare_streaming_metadata(self):
-        self._loop = asyncio.get_running_loop()
         _, project = auth.default()
         self._client = genai.Client(
             vertexai=True,

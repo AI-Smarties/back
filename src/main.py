@@ -150,6 +150,7 @@ async def start_asr(ws: WebSocket, notify: bool = True):
         await asyncio.to_thread(ws.state.ASR.stop)
     gemini_live = GeminiLiveSession(
         ws,
+        asyncio.get_running_loop(),
         text=True,
         calendar_context=ws.state.LATEST_CALENDAR_CONTEXT,
     )
