@@ -35,7 +35,7 @@ Your job: decide if vector_database_responses contain information that would gen
 
 Step 1 Validate thought_context against transcript:
 Check if the thought_context is grounded in what has actually been said in the transcript.
-If the thought_context is speculative or goes beyond what the transcript says, return "not_relevant".
+If the thought_context is speculative or goes beyond what the transcript says, return status: "not_relevant".
 
 Step 2 Check if vectors from database answer it or help the user in this moment:
 Only return status: "found" if the vector_database_responses explicitly answer the thought_context.
@@ -58,7 +58,7 @@ Return status: "not_relevant" if:
 Given:
 - transcript: The conversation so far
 - thought_context: Why Gemini Live made this query
-- vector_database_responses: Historical data, your ONLY source for "found" answers
+- vector_database_responses: Historical data, your ONLY source from which to draw answers
 - previous_queries_and_answers: Already sent this session, do not repeat
 """
 
