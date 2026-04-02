@@ -53,7 +53,7 @@ Return status: "not_relevant" if:
 - The vectors don't answer the question
 - The information is already in the transcript
 - The information was already sent in this session
-- Based on the trancript, the user likely doesn't care about this information right now or already knows it.
+- Based on the transcript, the user likely doesn't care about this information right now or already knows it.
 
 Given:
 - transcript: The conversation so far
