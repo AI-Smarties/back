@@ -6,7 +6,6 @@ for testing and demonstration purposes.
 """
 
 import sys
-import time
 from pathlib import Path
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
