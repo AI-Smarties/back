@@ -12,6 +12,7 @@ POSTGRES_DB = os.getenv("POSTGRES_DB", "ai_smarties_db")
 
 DB_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
 DB_URL += f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+DB_URL += "?client_encoding=utf8"
 
 
 engine = create_engine(DB_URL)
