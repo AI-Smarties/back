@@ -163,15 +163,14 @@ async def handle_text(text: str, ws: WebSocket):  # pylint: disable=too-many-ret
 
 async def start_asr(ws: WebSocket, notify: bool = True):
     if ws.state.ASR:
-        await asyncio.to_thread(ws.state.ASR.stop)
+        ws.state.ASR.stop()
     gemini_live = GeminiLiveSession(
         ws,
-        asyncio.get_running_loop(),
         text=True,
-        calendar_context=ws.state.LATEST_CALENDAR_CONTEXT,
+        calendar_context=ws.state.LATEST_CALENDAR_CONTEXT or {},
     )
     ws.state.ASR = StreamingASR(gemini_live)
-    await asyncio.to_thread(ws.state.ASR.start)
+    await ws.state.ASR.start()
     if not notify:
         return
     await ws.send_json({"type": "control", "cmd": "asr_started"})
@@ -179,7 +178,7 @@ async def start_asr(ws: WebSocket, notify: bool = True):
 
 async def stop_asr(ws: WebSocket, notify: bool = True):
     if ws.state.ASR:
-        transcript = await asyncio.to_thread(ws.state.ASR.stop)
+        transcript = ws.state.ASR.stop()
         if transcript:
             asyncio.create_task(
                 extract_and_save_information_to_database(

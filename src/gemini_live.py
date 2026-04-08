@@ -103,7 +103,7 @@ def amplify_chunk(pcm_chunk: bytes, gain: float = 2.0) -> bytes:
 
 
 class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
-    def __init__(self, ws, loop = None, text: bool = False, calendar_context=None):  # pylint: disable=dangerous-default-value
+    def __init__(self, ws, text: bool = False, calendar_context=None):  # pylint: disable=dangerous-default-value
         self.ws = ws
         self.text = text
         self.tokens_used = 0
@@ -111,7 +111,6 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         self.query_history: list[dict] = []
         self.dropped_packets = 0
         self._queue: asyncio.Queue = asyncio.Queue(maxsize=200)
-        self._loop = loop
         self._task: asyncio.Task | None = None
         self._fetch_semaphore = asyncio.Semaphore(2)
         self._running = False
@@ -125,7 +124,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         print(f"[Gemini Live] Starting session, mode: {'text' if self.text else 'audio'}")
         self._running = True
         self._prepare_streaming_metadata()
-        self._task = self._loop.create_task(self._run())
+        self._task = asyncio.create_task(self._run())
 
     def _prepare_streaming_metadata(self):
         _, project = auth.default()
@@ -182,11 +181,9 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
             self.transcript += chunk + " "
         else:
             chunk = amplify_chunk(chunk, gain=35.0)
-        try:
-            self._loop.call_soon_threadsafe(self._enqueue_chunk_nowait, chunk)
-        except RuntimeError:
-            self._enqueue_chunk_nowait(chunk)
+        self._enqueue_chunk_nowait(chunk)
 
+     
     def _request_shutdown(self):
         try:
             self._queue.put_nowait(None)
