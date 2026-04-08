@@ -102,7 +102,7 @@ def amplify_chunk(pcm_chunk: bytes, gain: float = 2.0) -> bytes:
 
 
 class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
-    def __init__(self, ws, loop = None, text: bool = False, calendar_context={}):  # pylint: disable=dangerous-default-value
+    def __init__(self, ws, loop = None, text: bool = False, calendar_context=None):  # pylint: disable=dangerous-default-value
         self.ws = ws
         self.text = text
         self.tokens_used = 0
@@ -116,7 +116,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         self._running = False
         self._client = None
         self._last_drop_log_time = 0.0
-        self.calendar_context = calendar_context
+        self.calendar_context = calendar_context if calendar_context else {}
         self.config = None
 
 
@@ -124,7 +124,7 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
         print(f"[Gemini Live] Starting session, mode: {'text' if self.text else 'audio'}")
         self._running = True
         self._prepare_streaming_metadata()
-        self._task = asyncio.create_task(self._run())
+        self._task = self._loop.create_task(self._run())
 
     def _prepare_streaming_metadata(self):
         _, project = auth.default()
