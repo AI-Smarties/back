@@ -2,15 +2,16 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 import asyncio
 import json
+from os import environ
 
 from fastapi import FastAPI, WebSocket, HTTPException, Depends
 from sqlalchemy.exc import IntegrityError, NoResultFound
+from google import auth
 
 from asr import StreamingASR
 from memory_extractor import extract_and_save_information_to_database
 import db_utils
 import db
-
 from context_service import build_context
 from gemini_live import GeminiLiveSession
 from auth import get_current_user, verify_token
@@ -18,9 +19,20 @@ from auth import get_current_user, verify_token
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    """Create database tables automatically when the app starts."""
-    print("[FastAPI] Creating database tables on startup (if missing)")
-    db.create_tables()
+    print("[FastAPI] Verifying environment variables and GCP credentials")
+    try:
+        auth.default()
+    except Exception as e:
+        raise RuntimeError(f"Failed to get GCP credentials: {e}") from e
+    if not environ.get("FIREBASE_PROJECT_ID"):
+        raise RuntimeError("Environment variable 'FIREBASE_PROJECT_ID' is not set")
+
+    print("[FastAPI] Verifying database connection and creating database tables (if missing)")
+    try:
+        db.create_tables()
+    except Exception as e:
+        raise RuntimeError(f"Failed to create database tables: {e}") from e
+
     yield
 
 
