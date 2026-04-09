@@ -6,7 +6,7 @@ from os import environ
 
 from fastapi import FastAPI, WebSocket, HTTPException, Depends
 from sqlalchemy.exc import IntegrityError, NoResultFound
-from google import auth
+import google
 
 from asr import StreamingASR
 from memory_extractor import extract_and_save_information_to_database
@@ -21,7 +21,7 @@ from auth import get_current_user, verify_token
 async def lifespan(_: FastAPI):
     print("[FastAPI] Verifying environment variables and GCP credentials")
     try:
-        auth.default()
+        google.auth.default()
     except Exception as e:
         raise RuntimeError(f"Failed to get GCP credentials: {e}") from e
     if not environ.get("FIREBASE_PROJECT_ID"):
