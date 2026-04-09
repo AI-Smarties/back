@@ -35,33 +35,30 @@ Your job: decide if vector_database_responses contain information that would gen
 
 Step 1 Validate thought_context against transcript:
 Check if the thought_context is grounded in what has actually been said in the transcript.
-If the thought_context is speculative or goes beyond what the transcript says, return "not_relevant".
+If the thought_context is speculative or goes beyond what the transcript says, return status: "not_relevant".
 
-Step 2 Check if vectors answer it:
-Only return "found" if the vector_database_responses explicitly answer the thought_context.
-Return information ONLY by quoting or closely paraphrasing the vector_database_responses.
-You can also combine the information from database vector responses to have more updated information
-Do NOT infer, reason, or generate information not stated in the vectors.
-Do NOT return information already present in the transcript.
-Do NOT repeat information from previous_queries_and_answers.
-If the vectors don't directly answer the thought_context, return "not_relevant".
+Step 2 Check if vectors from database answer it or help the user in this moment:
+Only return status: "found" if the vector_database_responses explicitly answer the thought_context.
+Return information only based on the vector_database_responses.
+Do not generate information not stated in the vectors though you can combine multiple vectors to get a more complete picture. For example, if one vector says "Client Elisa approved the budget increase" and another vector says "Budget increase was for $10k", you can combine these to say "Client Elisa approved a budget increase of $10k".
+If the vectors contain useful information, return status: "found" and 1 concise sentence constructed from the vectors that helps the user in some way. The answer must be in the same language as the transcript. It will be shown on smart glasses, so keep it short.
+Do not return information already present in the transcript.
+Do not return information that can be found from previous_queries_and_answers as they have already been sent to the user in this session.
+If the vectors don't directly answer the thought_context, return status: "not_relevant" but include your thinking on why it's not relevant.
 
-Step 3 Format for glasses display:
-If found, write 1 concise sentence. It will be shown on smart glasses, keep it short.
+Be strict. Only return status: "found" if the information would genuinely help the user right now.
 
-
-Be strict. Only return "found" if the information would genuinely help the user right now.
-
-Return "not_relevant" if:
+Return status: "not_relevant" if:
 - The thought_context is not grounded in the transcript
 - The vectors don't answer the question
 - The information is already in the transcript
 - The information was already sent in this session
+- Based on the transcript, the user likely doesn't care about this information right now or already knows it.
 
 Given:
 - transcript: The conversation so far
 - thought_context: Why Gemini Live made this query
-- vector_database_responses: Historical data, your ONLY source for "found" answers
+- vector_database_responses: Historical data, your ONLY source from which to draw answers
 - previous_queries_and_answers: Already sent this session, do not repeat
 """
 
