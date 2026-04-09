@@ -101,6 +101,7 @@ gcloud auth application-default set-quota-project [PROJECT_ID]
 
 ```bash
 export FIREBASE_PROJECT_ID=[PROJECT_ID]
+```
 
 ### 7. Start the server
 
