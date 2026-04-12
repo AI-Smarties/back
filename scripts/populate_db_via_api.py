@@ -31,6 +31,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
+import os
 
 TIMEZONE = "Europe/Helsinki"
 
@@ -335,7 +336,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    api = ApiClient(base_url=args.base_url, timeout_s=args.timeout, token=args.token)
+    token = args.token or os.environ.get("TOKEN")
+    api = ApiClient(base_url=args.base_url, timeout_s=args.timeout, token=token)
 
     print("Starting database population via API...")
     print("=" * 60)

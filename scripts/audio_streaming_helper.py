@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import json
 import time
+import os
 
 import websockets
 
@@ -52,13 +53,16 @@ async def stream(url: str, path: str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    token = os.environ.get("TOKEN")
     parser.add_argument("audio", help="Raw LINEAR16 PCM file (16kHz mono)")
-    # parser.add_argument("--url", default="wss://<staging-address>/ws/")
-    parser.add_argument("--url", default="ws://localhost:8000/ws/")
+    # parser.add_argument("--url", default=f"wss://<staging-address>/ws/?token={token}")
+    parser.add_argument("--url", default=f"ws://localhost:8000/ws/?token={token}")
     args = parser.parse_args()
     asyncio.run(stream(args.url, args.audio))
 
 
+# set firebase token as environment variable before running:
+# export TOKEN=token_value_here
 # run in root
 # source ./venv/bin/activate
 # python3 ./scripts/audio_streaming_helper.py ./scripts/output.raw

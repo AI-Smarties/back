@@ -88,13 +88,19 @@ Run these commands in your terminal:
 2. Enable the API: Search for "Cloud Speech-to-Text API" in the top search bar and click Enable.
 
 ```bash
-   gcloud auth application-default login
+gcloud auth application-default login
 ```
 
 3. Link to Project: Run this command (replace [PROJECT_ID] with the ID you copied in Step 1):
 
 ```bash
-   gcloud auth application-default set-quota-project [PROJECT_ID]
+gcloud auth application-default set-quota-project [PROJECT_ID]
+```
+
+4. Set Firebase project id:
+
+```bash
+export FIREBASE_PROJECT_ID=[PROJECT_ID]
 ```
 
 ### 7. Start the server
