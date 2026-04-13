@@ -17,7 +17,9 @@ from context_service import build_context
 from gemini_live import GeminiLiveSession
 from auth import get_current_user, verify_token
 
+
 load_dotenv()
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
