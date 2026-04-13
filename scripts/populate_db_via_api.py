@@ -33,6 +33,12 @@ from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 import os
 
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
+
 TIMEZONE = "Europe/Helsinki"
 
 

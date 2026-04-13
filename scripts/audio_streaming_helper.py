@@ -5,6 +5,11 @@ import time
 import os
 
 import websockets
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
 
 SAMPLE_RATE = 16000
 BYTES_PER_SAMPLE = 2  # LINEAR16
