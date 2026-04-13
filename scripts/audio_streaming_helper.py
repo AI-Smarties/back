@@ -5,11 +5,17 @@ import time
 import os
 
 import websockets
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
 
 SAMPLE_RATE = 16000
 BYTES_PER_SAMPLE = 2  # LINEAR16
 CHUNK_DURATION = 0.1  # seconds
 CHUNK_BYTES = int(SAMPLE_RATE * BYTES_PER_SAMPLE * CHUNK_DURATION)  # 3200
+
 
 async def stream(url: str, path: str):
     audio = open(path, "rb").read()  # pylint: disable=consider-using-with

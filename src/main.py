@@ -7,6 +7,7 @@ from os import environ
 from fastapi import FastAPI, WebSocket, HTTPException, Depends
 from sqlalchemy.exc import IntegrityError, NoResultFound
 import google
+from dotenv import load_dotenv
 
 from asr import StreamingASR
 from memory_extractor import extract_and_save_information_to_database
@@ -15,6 +16,9 @@ import db
 from context_service import build_context
 from gemini_live import GeminiLiveSession
 from auth import get_current_user, verify_token
+
+
+load_dotenv()
 
 
 @asynccontextmanager
