@@ -11,6 +11,8 @@ This project was created for Software Engineering Project at University of Helsi
 
 Backend is intended to be used with the [Flutter frontend](https://github.com/AI-Smarties/front)
 
+---
+
 ## Setup and Running
 
 ### 1. Clone repo and navigate to directory
@@ -94,22 +96,22 @@ Run these commands in your terminal:
 
 2. Login to your Google account
 
-   ```bash
-      gcloud auth application-default login
-   ```
+    ```bash
+    gcloud auth application-default login
+    ```
 
 3. Link to Project: Run this command (replace [PROJECT_ID] with the ID you copied in Step 1):
 
-   ```bash
-      gcloud auth application-default set-quota-project [PROJECT_ID]
-   ```
+    ```bash
+    gcloud auth application-default set-quota-project [PROJECT_ID]
+    ```
 
 ### 7. Firebase
 
-create following .env file in root dir
+create the following .env file in root dir
 
 ```bash
-   FIREBASE_PROJECT_ID=[PROJECT_ID]
+FIREBASE_PROJECT_ID=[PROJECT_ID]
 ```
 
 ### 8. Start the server
