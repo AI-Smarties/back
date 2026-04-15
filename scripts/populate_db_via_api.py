@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
@@ -311,7 +310,7 @@ def populate(api: ApiClient) -> None:
             information = f"Konteksti: {conv_data['name']}; Sisältö: {vector_text}"
             vec_id = create_vector(api, text=information, conv_id=conv_id)
             print(f"    Created vector (ID: {vec_id})")
-            time.sleep(13)
+            #  Add time.sleep() here if facing problems with too fast population
 
 
 def parse_args() -> argparse.Namespace:
