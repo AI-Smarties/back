@@ -3,6 +3,7 @@ Tool functions for Gemini Live API.
 These functions can be called by Gemini as tool calls.
 """
 
+
 import asyncio
 import json
 from typing import Literal, Sequence, TypedDict
@@ -12,6 +13,10 @@ from google import auth, genai  # pylint: disable=no-name-in-module
 from db_utils import search_vectors
 from models import Vector
 
+
+# pylint: disable=duplicate-code
+
+
 CLIENT = None
 
 
@@ -20,31 +25,41 @@ def get_client():
     global CLIENT  # pylint: disable=global-statement
     if CLIENT is None:
         _, project = auth.default()
-        CLIENT = genai.Client(vertexai=True, project=project, location="global")
+        CLIENT = genai.Client(
+            vertexai=True, project=project, location="global")
     return CLIENT
 
 
 SYSTEM_PROMPT = """
-Answer the question in thought_context using only the vector_database_responses as source.
-If the results don't answer the question directly, return "not_relevant".
-You can use the transcript to understand context but not as an information source.
+Your job: decide if vector_database_responses contain information that would genuinely help the user RIGHT NOW based on the current conversation.
 
-Dont send information to user if transcript is providing the information already.
-You can also combine the information from database vector responses to have more updated information
+Step 1 Validate thought_context against transcript:
+Check if the thought_context is grounded in what has actually been said in the transcript.
+If the thought_context is speculative or goes beyond what the transcript says, return status: "not_relevant".
+
+Step 2 Check if vectors from database answer it or help the user in this moment:
+Only return status: "found" if the vector_database_responses explicitly answer the thought_context.
+Return information only based on the vector_database_responses.
+Do not generate information not stated in the vectors though you can combine multiple vectors to get a more complete picture. For example, if one vector says "Client Elisa approved the budget increase" and another vector says "Budget increase was for $10k", you can combine these to say "Client Elisa approved a budget increase of $10k".
+If the vectors contain useful information, return status: "found" and 1 concise sentence constructed from the vectors that helps the user in some way. The answer must be in the same language as the transcript. It will be shown on smart glasses, so keep it short.
+Do not return information already present in the transcript.
+Do not return information that can be found from previous_queries_and_answers as they have already been sent to the user in this session.
+If the vectors don't directly answer the thought_context, return status: "not_relevant" but include your thinking on why it's not relevant.
+
+Be strict. Only return status: "found" if the information would genuinely help the user right now.
+
+Return status: "not_relevant" if:
+- The thought_context is not grounded in the transcript
+- The vectors don't answer the question
+- The information is already in the transcript
+- The information was already sent in this session
+- Based on the transcript, the user likely doesn't care about this information right now or already knows it.
 
 Given:
-- transcript: The conversation transcript
-- thought_context: Why the query was made by Gemini Live
-- vector_database_responses: Data from vector database, use only these as source of information
-- previous_queries_and_answers: Earlier tool calls this session with their answers. Do not repeat information already sent.
-
-Decide:
-- "found": vector_database_responses answers the question or fulfills the reason in thought_context
-- "not_relevant": results exist but are not actually relevant to the current moment
-- "error": something is wrong with the inputs
-
-you return always your thought context
-Be strict. Only return "found" if the information would genuinely help the user right now.
+- transcript: The conversation so far
+- thought_context: Why Gemini Live made this query
+- vector_database_responses: Historical data, your ONLY source from which to draw answers
+- previous_queries_and_answers: Already sent this session, do not repeat
 """
 
 
@@ -78,7 +93,7 @@ async def evaluate_db_data(
         f"- {vector.conversation.timestamp} {vector.text}"
         for vector in vector_database_response
     )
-    print(formatted_vectors)
+    print(f"[Gemini Tools] Formatted vectors: {formatted_vectors}")
 
     contents = (
         f"full_conversation_transcript: {transcript}\n"
@@ -130,7 +145,7 @@ async def evaluate_db_data(
         ),
     )
 
-    print(f"evaluate_db_data tokens: {response.usage_metadata.total_token_count}")
+    print(f"[Gemini Tools] evaluate_db_data tokens: {response.usage_metadata.total_token_count}")
     data = response.parsed
     status = data.get("status")
 
@@ -159,6 +174,7 @@ async def fetch_information(
     query: str,
     transcript: str,
     query_history: list[dict] | None = None,
+    user_id: str | None = None,
 ) -> EvaluateResponse:
     """
     Fetch useful information based on a text query from vector database.
@@ -167,16 +183,19 @@ async def fetch_information(
         return {"status": "not_relevant", "thinking": ""}
 
     try:
-        print(f"query: {query}\nthinking: {thinking_context}")
-        print(json.dumps(query_history, indent=2))
+        print(f"[Gemini Tools] Query: {query}\nthinking: {thinking_context}")
+        print(f"[Gemini Tools] {json.dumps(query_history, indent=2)}")
 
-        results = await asyncio.get_event_loop().run_in_executor(
-            None,
-            lambda: search_vectors(query, limit=5, max_distance=0.5),
+        results = await asyncio.to_thread(
+            search_vectors,
+            query,
+            user_id=user_id,
+            limit=5,
+            max_distance=0.5,
         )
 
         if not results:
-            print("no vector data")
+            print("[Gemini Tools] No vector data found")
             return {"status": "not_relevant", "thinking": ""}
 
         return await evaluate_db_data(
@@ -186,6 +205,7 @@ async def fetch_information(
             query_history or [],
         )
     except Exception as error:  # pylint: disable=broad-exception-caught
+        print(f"[Gemini Tools] Failed to fetch information: {error}")
         return {
             "status": "error",
             "error_message": f"Failed to fetch information: {error}",

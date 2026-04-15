@@ -1,8 +1,11 @@
 from unittest.mock import patch
 
 import pytest
+from sqlalchemy.exc import OperationalError
 
 from gemini_tools import fetch_information
+import db_utils
+import db
 
 
 class TestFetchInformation:
@@ -84,3 +87,53 @@ class TestFetchInformation:
         assert result["information"] == "Found information"
         assert result["score"] == 0.95
         assert result["thinking"] == "Relevant prior context found"
+
+    @pytest.mark.asyncio
+    async def test_fetch_information_user_isolation(self, monkeypatch):
+        try:
+            db.create_tables()
+        except OperationalError:
+            pytest.skip("Database not available")
+
+        class _StubEmbeddingModel:  # pylint: disable=too-few-public-methods,unused-argument
+            def get_embeddings(self, texts, output_dimensionality):
+                embedding = [0.0] * output_dimensionality
+                embedding[0] = 1.0
+                return [type("obj", (), {"values": embedding})()]
+
+        monkeypatch.setattr(db_utils, "EMBEDDING_MODEL", _StubEmbeddingModel())
+
+        # user A
+        conv_a = db_utils.create_conversation("convA", user_id="user-A")
+        db_utils.create_vector("secret A", conv_a.id)
+
+        # user B
+        conv_b = db_utils.create_conversation("convB", user_id="user-B")
+        db_utils.create_vector("secret B", conv_b.id)
+
+        with patch("gemini_tools.evaluate_db_data") as mock_eval:
+            mock_eval.side_effect = lambda transcript, vectors, *_: {
+                "status": "found",
+                "information": vectors[0].text,
+                "score": 1.0,
+                "thinking": "",
+            }
+
+            res_a = await fetch_information(
+                thinking_context="test",
+                query="secret",
+                transcript="",
+                query_history=[],
+                user_id="user-A",
+            )
+
+            res_b = await fetch_information(
+                thinking_context="test",
+                query="secret",
+                transcript="",
+                query_history=[],
+                user_id="user-B",
+            )
+
+        assert "secret A" in res_a["information"]
+        assert "secret B" in res_b["information"]

@@ -1,6 +1,8 @@
+from google import auth, genai
+
+
 # pylint: disable=duplicate-code
 
-from google import auth, genai  # pylint: disable=no-name-in-module
 
 CLIENT = None
 

@@ -1,8 +1,8 @@
 import asyncio
 import json
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
+from zoneinfo import ZoneInfo
 from google import auth, genai
 
 from db_utils import (
@@ -13,6 +13,7 @@ from db_utils import (
     update_conversation_summary,
 )
 from summary_service import generate_summary
+
 
 CLIENT = None
 
@@ -28,6 +29,7 @@ def get_client():
             location="global",
         )
     return CLIENT
+
 
 SYSTEM_PROMPT = """
 You extract facts from meeting transcripts that would cause real problems if forgotten.
@@ -110,6 +112,7 @@ async def memory_extractor_worker(transcript):
 
 async def extract_and_save_information_to_database(
     transcript,
+    user_id,
     conversation_id=None,
     name=None,
     cat_id=None,
@@ -127,10 +130,10 @@ async def extract_and_save_information_to_database(
     """
     transcript = transcript.strip()
     if not transcript:
-        print("Transcript empty, skipping extraction and summary generation")
+        print("[Memory Extractor] Transcript empty, skipping extraction and summary generation")
         return
 
-    print("extracting information from transcript")
+    print("[Memory Extractor] Extracting information from transcript")
 
     extracted_name = name
     extracted_vectors = []
@@ -140,12 +143,12 @@ async def extract_and_save_information_to_database(
         if information_vectors:
             extracted_name = extracted_name or information_vectors.get("name")
             extracted_vectors = information_vectors.get("vectors", [])
-            print(json.dumps(information_vectors, indent=2))
+            print(f"[Memory Extractor] {json.dumps(information_vectors, indent=2)}")
     except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"memory_extractor_worker failed: {e}")
+        print(f"[Memory Extractor] Memory_extractor_worker failed: {e}")
 
     if not extracted_vectors:
-        print("No vectors extracted, skipping store")
+        print("[Memory Extractor] No vectors extracted, skipping store")
         return
 
     try:
@@ -157,13 +160,14 @@ async def extract_and_save_information_to_database(
                 conversation_id=conversation_id,
                 name=extracted_name or _default_conversation_name(transcript),
                 cat_id=cat_id,
+                user_id=user_id,
             ),
         )
     except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"store_data failed: {e}")
+        print(f"[Memory Extractor] Store_data failed: {e}")
 
 
-def store_data(transcript, vectors, name=None, conversation_id=None, cat_id=None):
+def store_data(transcript, vectors, user_id, name=None, conversation_id=None, cat_id=None): # pylint: disable=too-many-arguments,too-many-positional-arguments
     """
     Persist conversation, vectors, and summary.
 
@@ -178,24 +182,27 @@ def store_data(transcript, vectors, name=None, conversation_id=None, cat_id=None
             summary=None,
             cat_id=cat_id,
             timestamp=datetime.now(ZoneInfo("Europe/Helsinki")),
+            user_id=user_id,
         ).id
 
+    get_conversation_by_id(conv_id, user_id)
     for vector in vectors:
         create_vector(vector["data"], conv_id)
 
     try:
         summary = generate_summary(transcript)
         if summary:
-            update_conversation_summary(conv_id, summary)
-            print(f"summary saved for conversation {conv_id}")
+            update_conversation_summary(conv_id, summary, user_id)
+            print(f"[Memory Extractor] Summary saved for conversation {conv_id}")
         else:
-            print(f"no summary generated for conversation {conv_id}")
+            print(f"[Memory Extractor] No summary generated for conversation {conv_id}")
     except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"summary generation failed for conversation {conv_id}: {e}")
+        print(f"[Memory Extractor] Summary generation failed for conversation {conv_id}: {e}")
 
-    conv = get_conversation_by_id(conv_id)
-    saved_vectors = get_vectors_by_conversation_id(conv_id)
+    conv = get_conversation_by_id(conv_id, user_id)
+    saved_vectors = get_vectors_by_conversation_id(conv_id, user_id)
 
+    print("[Memory Extractor]:")
     print(f"conversation: {conv.id} {conv.name}")
     print(f"summary: {conv.summary}")
     print(f"category_id: {conv.category_id}")
