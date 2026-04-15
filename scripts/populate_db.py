@@ -26,7 +26,7 @@ from db_utils import (
 from db import create_tables, drop_tables
 
 TIMEZONE = "Europe/Helsinki"
-POPULATE_USER_ID = "populate-script-user"
+POPULATE_USER_ID = "populate-script-user"  # Put your own user ID here
 
 
 def populate_categories():
