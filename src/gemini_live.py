@@ -199,12 +199,15 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
             except asyncio.QueueFull:
                 pass
 
-    def stop(self) -> str:
+    def stop(self, wait=True) -> str:
         print("[Gemini Live] Stopping session...")
         self._running = False
 
         # Request graceful shutdown: _send() and _run() both exit when they read None.
         self._request_shutdown()
+
+        if wait:
+            time.sleep(1)
 
         if self._task:
             self._task.add_done_callback(
