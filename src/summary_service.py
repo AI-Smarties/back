@@ -38,6 +38,7 @@ def generate_summary(transcript: str) -> str | None:
                     system_instruction=(
                         "Summarize this meeting/session briefly and clearly. "
                         "Focus on the key decision, topic, or outcome."
+                        "Respond in the same language as the transcript."
                     ),
                 ),
             )
