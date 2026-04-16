@@ -39,6 +39,26 @@ def create_vector(text, conv_id):
         return vec
 
 
+def create_vectors_batch(texts, conv_id):
+    """Create multiple vectors with a single embedding API call."""
+    if not texts:
+        return []
+    if not EMBEDDING_MODEL:
+        load_embedding_model()
+    embeddings = EMBEDDING_MODEL.get_embeddings(
+        texts,
+        output_dimensionality=EMBEDDING_DIMENSIONS,
+    )
+    vecs = [
+        Vector(text=text, conversation_id=conv_id, embedding=emb.values)
+        for text, emb in zip(texts, embeddings)
+    ]
+    with sessionlocal.begin() as session:
+        for vec in vecs:
+            session.add(vec)
+        return vecs
+
+
 def delete_vector(vec_id, user_id):
     with sessionlocal.begin() as session:
         stmt = (

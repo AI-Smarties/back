@@ -7,7 +7,7 @@ from google import auth, genai
 
 from db_utils import (
     create_conversation,
-    create_vector,
+    create_vectors_batch,
     get_conversation_by_id,
     get_vectors_by_conversation_id,
     update_conversation_summary,
@@ -32,26 +32,32 @@ def get_client():
 
 
 SYSTEM_PROMPT = """
-You extract facts from meeting transcripts that would cause real problems if forgotten.
+Extract every factual claim from this meeting transcript worth storing in a searchable database.
 
-SAVE: deadlines, decisions, scope changes, budget figures, named responsibilities, technical blockers
-SKIP: how a decision was reached, confirmations of things already stated, small talk, food, office logistics, parking
+ALWAYS SAVE:
+- Every number mentioned: budgets, costs, overruns, percentages, counts, targets — include units and context
+- Every date or deadline mentioned
+- Every named person and what they decided, recommended, or are responsible for
+- Every risk or concern raised
+- Every decision made or option presented for approval
+- Every change in scope, budget, or schedule
+- Any action item with a clear owner or timeline
+
+SKIP:
+- Small talk, greetings, weather, parking spaces, coffee, office logistics completely unrelated to projects
+- Phrases that merely confirm what was already said ("yes", "exactly", "good point")
+- The fact that a report will be sent — only save the content of the report
 
 Rules:
-- Only save facts explicitly stated in the transcript. Never infer, assume, or fill in details not directly mentioned — especially numbers, names, and dates.
-- Save only if forgetting in 3 months would cause a real mistake.
-- Save outcomes, not process steps. Good: "Client Elisa approved a backend hire — team lacked capacity to meet current backend requirements." Bad: "Hiring process initiated."
-- One atomic fact per vector. Do not combine multiple facts into one entry.
-- Always store in English, regardless of the language of the transcript.
-- Each fact must be self-contained: include who decided it and in what context.
-  Bad: "Priority 1: meeting summary feature."
-  Good: "Client Elisa set meeting summary as Priority 1 — save conversation summaries to the database and auto-share to Google Drive."
-- Phrase for retrieval: include the actor, subject, and key detail so a semantic search for any of them finds the fact.
-- Avoid generic statements. If a fact would be true of any similar project, add specifics that make it unique to this one.
-- Do not save the same fact twice with different wording within this transcript.
-- If there is nothing worth saving, return an empty vectors array. Never store meta-comments about the transcript itself (e.g. "no facts found", "transcript lacks content").
+- Save EVERY number, date, and named person — do not summarize away quantitative data.
+- One atomic fact per vector. Do not combine multiple separate facts into one entry.
+- Always store BOTH "data" and "reason" fields in the same language as the transcript. Never use English if the transcript is in Finnish.
+- Each fact must be self-contained: include subject and key detail so a semantic search finds it.
+- Only save facts explicitly stated — never infer or assume details not directly mentioned.
+- Do not save the same fact twice with different wording.
+- If there is nothing worth saving, return an empty vectors array.
 
-For "name": create a short English title capturing the key topic (e.g. "Elisa client meeting - March 2026").
+For "name": create a short title capturing the key topic (e.g. "Q2 projektipalaveri - huhtikuu 2026").
 """
 
 
@@ -82,7 +88,7 @@ async def memory_extractor_worker(transcript):
     """
     client = get_client()
     response = await client.aio.models.generate_content(
-        model="gemini-3.1-flash-lite-preview",
+        model="gemini-2.5-flash-lite",
         contents=transcript,
         config=genai.types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
@@ -186,8 +192,7 @@ def store_data(transcript, vectors, user_id, name=None, conversation_id=None, ca
         ).id
 
     get_conversation_by_id(conv_id, user_id)
-    for vector in vectors:
-        create_vector(vector["data"], conv_id)
+    create_vectors_batch([v["data"] for v in vectors], conv_id)
 
     try:
         summary = generate_summary(transcript)

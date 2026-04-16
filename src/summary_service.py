@@ -1,3 +1,5 @@
+import time
+
 from google import auth, genai
 
 
@@ -27,20 +29,24 @@ def generate_summary(transcript: str) -> str | None:
 
     client = get_client()
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash-lite",
-        contents=transcript,
-        config=genai.types.GenerateContentConfig(
-            system_instruction=(
-                "Summarize this meeting/session briefly and clearly. "
-                "Focus on the key decision, topic, or outcome."
-            ),
-        ),
-    )
-
-    text = getattr(response, "text", None)
-    if not text:
-        return None
-
-    text = text.strip()
-    return text or None
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash-lite",
+                contents=transcript,
+                config=genai.types.GenerateContentConfig(
+                    system_instruction=(
+                        "Summarize this meeting/session briefly and clearly. "
+                        "Focus on the key decision, topic, or outcome."
+                    ),
+                ),
+            )
+            text = getattr(response, "text", None)
+            if not text:
+                return None
+            return text.strip() or None
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            if "429" in str(e) and attempt < 2:
+                time.sleep(30 * (attempt + 1))
+                continue
+            raise
