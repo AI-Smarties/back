@@ -42,7 +42,7 @@ Rules:
 - Save only if forgetting in 3 months would cause a real mistake.
 - Save outcomes, not process steps. Good: "Client Elisa approved a backend hire — team lacked capacity to meet current backend requirements." Bad: "Hiring process initiated."
 - One atomic fact per vector. Do not combine multiple facts into one entry.
-- Always store in English, regardless of the language of the transcript.
+- Always store in the same language as the transcript.
 - Each fact must be self-contained: include who decided it and in what context.
   Bad: "Priority 1: meeting summary feature."
   Good: "Client Elisa set meeting summary as Priority 1 — save conversation summaries to the database and auto-share to Google Drive."
@@ -51,7 +51,7 @@ Rules:
 - Do not save the same fact twice with different wording within this transcript.
 - If there is nothing worth saving, return an empty vectors array. Never store meta-comments about the transcript itself (e.g. "no facts found", "transcript lacks content").
 
-For "name": create a short English title capturing the key topic (e.g. "Elisa client meeting - March 2026").
+For "name": create a short title in the same language as the transcript capturing the key topic (e.g. "Elisa client meeting - March 2026").
 """
 
 

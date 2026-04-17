@@ -33,7 +33,8 @@ def generate_summary(transcript: str) -> str | None:
         config=genai.types.GenerateContentConfig(
             system_instruction=(
                 "Summarize this meeting/session briefly and clearly. "
-                "Focus on the key decision, topic, or outcome."
+                "Focus on the key decision, topic, or outcome. "
+                "Keep the summary in the same language as the transcript. "
             ),
         ),
     )
