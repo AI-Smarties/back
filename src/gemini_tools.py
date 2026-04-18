@@ -18,6 +18,7 @@ from models import Vector
 
 
 CLIENT = None
+SEARCH_CLIENT = None
 
 
 def get_client():
@@ -28,6 +29,16 @@ def get_client():
         CLIENT = genai.Client(
             vertexai=True, project=project, location="global")
     return CLIENT
+
+
+def get_search_client():
+    """Separate client for Google Search grounding (requires us-central1)."""
+    global SEARCH_CLIENT  # pylint: disable=global-statement
+    if SEARCH_CLIENT is None:
+        _, project = auth.default()
+        SEARCH_CLIENT = genai.Client(
+            vertexai=True, project=project, location="us-central1")
+    return SEARCH_CLIENT
 
 
 SYSTEM_PROMPT = """
@@ -167,6 +178,139 @@ async def evaluate_db_data(
         "status": "error",
         "error_message": data.get("error_message", "unknown"),
     }
+
+
+WEB_EVAL_PROMPT = """
+Your job: decide if web_search_result contains information that the user GENUINELY NEEDS RIGHT NOW based on the current conversation.
+
+Step 1 – Validate the need:
+Read the transcript and thought_context carefully.
+Is the user clearly stuck, confused, or explicitly asking a factual question they cannot answer themselves?
+If not, return status: "not_relevant".
+
+Step 2 – Evaluate the web result:
+Only return status: "found" if the web_search_result DIRECTLY answers the user's need in a way they would benefit from.
+Do NOT include information that is already obvious from the transcript.
+Do NOT repeat anything already in previous_queries_and_answers.
+If status is "found", return exactly 1 concise sentence in the SAME LANGUAGE as the transcript, short enough for smart glasses.
+
+Return status: "not_relevant" if:
+- The user is just making conversation or musing aloud — they are not genuinely stuck
+- The web result does not directly answer what the user is uncertain about
+- The information is trivially available or already in the transcript
+- The answer was already sent this session
+
+Be strict. Err on the side of not sending.
+"""
+
+
+async def evaluate_web_data(
+    transcript: str,
+    web_search_result: str,
+    thinking_context: str,
+    query_history: list[dict],
+) -> EvaluateResponse:
+    """Evaluate if a web search result should be forwarded to the user."""
+    contents = (
+        f"full_conversation_transcript: {transcript}\n"
+        f"thought_context: {thinking_context}\n"
+        f"web_search_result: {web_search_result}\n"
+        f"previous_queries_and_answers: {json.dumps(query_history)}"
+    )
+
+    client = get_client()
+    response = await client.aio.models.generate_content(
+        model="gemini-2.5-flash-lite",
+        contents=contents,
+        config=genai.types.GenerateContentConfig(
+            system_instruction=WEB_EVAL_PROMPT,
+            response_mime_type="application/json",
+            response_schema={
+                "anyOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "status": {"type": "string", "enum": ["found"]},
+                            "information": {"type": "string"},
+                            "score": {"type": "number"},
+                            "thinking": {"type": "string"},
+                        },
+                        "required": ["status", "information", "score", "thinking"],
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "status": {"type": "string", "enum": ["not_relevant"]},
+                            "thinking": {"type": "string"},
+                        },
+                        "required": ["status", "thinking"],
+                    },
+                ]
+            },
+        ),
+    )
+
+    print(f"[Gemini Tools] evaluate_web_data tokens: {response.usage_metadata.total_token_count}")
+    data = response.parsed
+    status = data.get("status")
+
+    if status == "found":
+        return {
+            "status": "found",
+            "information": data.get("information", ""),
+            "score": data.get("score", 0.0),
+            "thinking": data.get("thinking", ""),
+        }
+
+    return {
+        "status": "not_relevant",
+        "thinking": data.get("thinking", ""),
+    }
+
+
+async def fetch_general_knowledge(
+    thinking_context: str,
+    query: str,
+    transcript: str,
+    query_history: list[dict] | None = None,
+) -> EvaluateResponse:
+    """Search the web for general knowledge and return only if genuinely needed."""
+    if not query:
+        return {"status": "not_relevant", "thinking": "empty query"}
+
+    try:
+        print(f"[Gemini Tools] Web search query: {query}\nthinking: {thinking_context}")
+
+        search_client = get_search_client()
+        search_response = await search_client.aio.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=f"Answer this question accurately and concisely: {query}",
+            config=genai.types.GenerateContentConfig(
+                tools=[genai.types.Tool(google_search=genai.types.GoogleSearch())],
+                temperature=0.1,
+            ),
+        )
+
+        web_text = search_response.text or ""
+        if not web_text.strip():
+            print("[Gemini Tools] Web search returned empty result")
+            return {"status": "not_relevant", "thinking": "no web results"}
+
+        print(f"[Gemini Tools] Web search result (truncated): {web_text[:200]}")
+
+        return await evaluate_web_data(
+            transcript,
+            web_text,
+            thinking_context,
+            query_history or [],
+        )
+
+    except Exception as error:  # pylint: disable=broad-exception-caught
+        print(f"[Gemini Tools] Web search failed: {error}")
+        return {
+            "status": "error",
+            "error_message": f"Web search failed: {error}",
+        }
 
 
 async def fetch_information(

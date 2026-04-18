@@ -1,9 +1,9 @@
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 
 import pytest
 from sqlalchemy.exc import OperationalError
 
-from gemini_tools import fetch_information
+from gemini_tools import fetch_information, fetch_general_knowledge
 import db_utils
 import db
 
@@ -137,3 +137,70 @@ class TestFetchInformation:
 
         assert "secret A" in res_a["information"]
         assert "secret B" in res_b["information"]
+
+
+class TestFetchGeneralKnowledge:
+    """Test cases for fetch_general_knowledge function."""
+
+    @pytest.mark.asyncio
+    async def test_empty_query_returns_not_relevant(self):
+        result = await fetch_general_knowledge(
+            thinking_context="user asked something",
+            query="",
+            transcript="some transcript",
+        )
+        assert result["status"] == "not_relevant"
+
+    @pytest.mark.asyncio
+    async def test_web_search_failure_returns_error(self):
+        with patch("gemini_tools.get_search_client") as mock_get:
+            mock_client = AsyncMock()
+            mock_client.aio.models.generate_content.side_effect = Exception("network error")
+            mock_get.return_value = mock_client
+
+            result = await fetch_general_knowledge(
+                thinking_context="user asked what HTTP is",
+                query="what is HTTP",
+                transcript="I don't know what HTTP is",
+            )
+        assert result["status"] == "error"
+        assert "Web search failed" in result["error_message"]
+
+    @pytest.mark.asyncio
+    async def test_empty_web_result_returns_not_relevant(self):
+        with patch("gemini_tools.get_search_client") as mock_get:
+            mock_client = AsyncMock()
+            mock_response = AsyncMock()
+            mock_response.text = ""
+            mock_client.aio.models.generate_content.return_value = mock_response
+            mock_get.return_value = mock_client
+
+            result = await fetch_general_knowledge(
+                thinking_context="user asked something",
+                query="what is X",
+                transcript="I don't know what X is",
+            )
+        assert result["status"] == "not_relevant"
+
+    @pytest.mark.asyncio
+    async def test_web_result_forwarded_to_evaluator(self):
+        with patch("gemini_tools.get_search_client") as mock_get:
+            mock_client = AsyncMock()
+            mock_response = AsyncMock()
+            mock_response.text = "HTTP stands for HyperText Transfer Protocol."
+            mock_client.aio.models.generate_content.return_value = mock_response
+            mock_get.return_value = mock_client
+
+            async def mock_evaluate(transcript, web_text, thinking_context, query_history):
+                assert web_text == "HTTP stands for HyperText Transfer Protocol."
+                return {"status": "found", "information": "HTTP on HyperText Transfer Protocol.", "score": 0.9, "thinking": "relevant"}
+
+            with patch("gemini_tools.evaluate_web_data", side_effect=mock_evaluate):
+                result = await fetch_general_knowledge(
+                    thinking_context="user asked what HTTP is",
+                    query="what is HTTP",
+                    transcript="I don't know what HTTP is",
+                )
+
+        assert result["status"] == "found"
+        assert "HTTP" in result["information"]
