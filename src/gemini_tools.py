@@ -44,27 +44,39 @@ def get_search_client():
 SYSTEM_PROMPT = """
 Your job: decide if vector_database_responses contain information that would genuinely help the user RIGHT NOW based on the current conversation.
 
-Step 1 Validate thought_context against transcript:
+Step 1 – Validate thought_context against transcript:
 Check if the thought_context is grounded in what has actually been said in the transcript.
 If the thought_context is speculative or goes beyond what the transcript says, return status: "not_relevant".
 
-Step 2 Check if vectors from database answer it or help the user in this moment:
-Only return status: "found" if the vector_database_responses explicitly answer the thought_context.
-Return information only based on the vector_database_responses.
-Do not generate information not stated in the vectors though you can combine multiple vectors to get a more complete picture. For example, if one vector says "Client Elisa approved the budget increase" and another vector says "Budget increase was for $10k", you can combine these to say "Client Elisa approved a budget increase of $10k".
-If the vectors contain useful information, return status: "found" and 1 concise sentence constructed from the vectors that helps the user in some way. The answer must be in the same language as the transcript. It will be shown on smart glasses, so keep it short.
-Do not return information already present in the transcript.
-Do not return information that can be found from previous_queries_and_answers as they have already been sent to the user in this session.
-If the vectors don't directly answer the thought_context, return status: "not_relevant" but include your thinking on why it's not relevant.
+Step 2 – Evaluate EACH vector individually, then decide:
 
-Be strict. Only return status: "found" if the information would genuinely help the user right now.
+For each vector ask: "Does this vector contain a fact that the user has NOT stated in the transcript?"
+- If the user already stated the same fact (even partially), that vector is REDUNDANT — skip it.
+- Partial overlap rule: if the user stated the main fact and the vector only adds ONE extra detail to that same fact, treat the entire vector as REDUNDANT — even if the extra detail seems useful. Examples of REDUNDANT vectors:
+  * User says "flat face" → vector says "flat face and round eyes" → REDUNDANT
+  * User says "long fur" → vector says "long fur that needs daily brushing" → REDUNDANT
+  * User says "X has Y" → vector says "X has Y and also Z" → REDUNDANT (Z is not worth sending)
+  The rule is strict: if the user stated the core subject+property, any vector that only extends that same subject+property is REDUNDANT.
+- Stating vs asking: if the user is STATING a fact (not asking a question or expressing uncertainty), do NOT return expansions of that fact. "The cat has long fur" is a statement — do not respond with fur-care tips.
+- If the vector contains a clearly DIFFERENT fact that stands on its own (e.g. user mentions player count, vector mentions match duration — these are independent facts), that is genuinely NEW.
+
+After evaluating all vectors:
+- If ANY vector is genuinely new and useful → return status: "found" with 1 concise sentence built from the new vectors only. Ignore redundant vectors entirely.
+- If ALL vectors are redundant or unrelated → return status: "not_relevant".
+
+Query history rule — IMPORTANT:
+If previous_queries_and_answers already contains an answer about the same entity or topic (e.g. already answered about Toyota Yaris, already answered about pizza toppings), do NOT return additional facts about that same entity/topic even if they are technically new. The user has already been informed about that topic in this session. Return status: "not_relevant".
+
+Additional rules:
+- You may combine multiple genuinely new vectors into one sentence.
+- The answer must be in the same language as the transcript.
+- Keep it short — it is shown on smart glasses.
 
 Return status: "not_relevant" if:
 - The thought_context is not grounded in the transcript
-- The vectors don't answer the question
-- The information is already in the transcript
-- The information was already sent in this session
-- Based on the transcript, the user likely doesn't care about this information right now or already knows it.
+- All vectors are redundant (already stated by the user, exactly or with only minor additions)
+- The same topic was already answered in previous_queries_and_answers
+- The user clearly does not need this information right now
 
 Given:
 - transcript: The conversation so far
@@ -94,6 +106,22 @@ class Error(TypedDict):
 EvaluateResponse = SendToUserResponse | DontSendToUserResponse | Error
 
 
+async def _generate_with_retry(client, model: str, contents: str, config, label: str):
+    """Call generate_content with exponential backoff on 429."""
+    for attempt in range(3):
+        try:
+            return await client.aio.models.generate_content(
+                model=model, contents=contents, config=config
+            )
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            if "429" in str(e) and attempt < 2:
+                wait = 30 * (attempt + 1)
+                print(f"[Gemini Tools] {label} rate limited, retrying in {wait}s...")
+                await asyncio.sleep(wait)
+                continue
+            raise
+
+
 async def evaluate_db_data(
     transcript: str,
     vector_database_response: Sequence[Vector],
@@ -113,47 +141,35 @@ async def evaluate_db_data(
         f"previous_queries_and_answers: {json.dumps(query_history)}"
     )
 
-    client = get_client()
-    response = await client.aio.models.generate_content(
-        model="gemini-2.5-flash-lite",
-        contents=contents,
-        config=genai.types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            response_mime_type="application/json",
-            response_schema={
-                "anyOf": [
-                    {
-                        "type": "object",
-                        "properties": {
-                            "status": {
-                                "type": "string",
-                                "enum": ["found"],
-                            },
-                            "information": {"type": "string"},
-                            "score": {"type": "number"},
-                            "thinking": {"type": "string"},
-                        },
-                        "required": [
-                            "status",
-                            "information",
-                            "score",
-                            "thinking",
-                        ],
+    config = genai.types.GenerateContentConfig(
+        system_instruction=SYSTEM_PROMPT,
+        response_mime_type="application/json",
+        response_schema={
+            "anyOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "status": {"type": "string", "enum": ["found"]},
+                        "information": {"type": "string"},
+                        "score": {"type": "number"},
+                        "thinking": {"type": "string"},
                     },
-                    {
-                        "type": "object",
-                        "properties": {
-                            "status": {
-                                "type": "string",
-                                "enum": ["not_relevant"],
-                            },
-                            "thinking": {"type": "string"},
-                        },
-                        "required": ["status", "thinking"],
+                    "required": ["status", "information", "score", "thinking"],
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "status": {"type": "string", "enum": ["not_relevant"]},
+                        "thinking": {"type": "string"},
                     },
-                ]
-            },
-        ),
+                    "required": ["status", "thinking"],
+                },
+            ]
+        },
+    )
+
+    response = await _generate_with_retry(
+        get_client(), "gemini-2.5-flash-lite", contents, config, "evaluate_db_data"
     )
 
     print(f"[Gemini Tools] evaluate_db_data tokens: {response.usage_metadata.total_token_count}")
@@ -218,36 +234,35 @@ async def evaluate_web_data(
         f"previous_queries_and_answers: {json.dumps(query_history)}"
     )
 
-    client = get_client()
-    response = await client.aio.models.generate_content(
-        model="gemini-2.5-flash-lite",
-        contents=contents,
-        config=genai.types.GenerateContentConfig(
-            system_instruction=WEB_EVAL_PROMPT,
-            response_mime_type="application/json",
-            response_schema={
-                "anyOf": [
-                    {
-                        "type": "object",
-                        "properties": {
-                            "status": {"type": "string", "enum": ["found"]},
-                            "information": {"type": "string"},
-                            "score": {"type": "number"},
-                            "thinking": {"type": "string"},
-                        },
-                        "required": ["status", "information", "score", "thinking"],
+    config = genai.types.GenerateContentConfig(
+        system_instruction=WEB_EVAL_PROMPT,
+        response_mime_type="application/json",
+        response_schema={
+            "anyOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "status": {"type": "string", "enum": ["found"]},
+                        "information": {"type": "string"},
+                        "score": {"type": "number"},
+                        "thinking": {"type": "string"},
                     },
-                    {
-                        "type": "object",
-                        "properties": {
-                            "status": {"type": "string", "enum": ["not_relevant"]},
-                            "thinking": {"type": "string"},
-                        },
-                        "required": ["status", "thinking"],
+                    "required": ["status", "information", "score", "thinking"],
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "status": {"type": "string", "enum": ["not_relevant"]},
+                        "thinking": {"type": "string"},
                     },
-                ]
-            },
-        ),
+                    "required": ["status", "thinking"],
+                },
+            ]
+        },
+    )
+
+    response = await _generate_with_retry(
+        get_client(), "gemini-2.5-flash-lite", contents, config, "evaluate_web_data"
     )
 
     print(f"[Gemini Tools] evaluate_web_data tokens: {response.usage_metadata.total_token_count}")

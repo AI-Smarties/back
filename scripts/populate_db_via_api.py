@@ -24,7 +24,7 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -60,7 +60,9 @@ class ApiClient:
 
     token: str | None = None
 
-    def request_json(self, method: str, path: str, params: dict[str, Any] | None = None) -> Any:
+    def request_json(
+        self, method: str, path: str, params: dict[str, Any] | None = None
+    ) -> Any:
         url = self._url(path, params=params)
         body = b"" if method.upper() in {"POST", "PUT", "PATCH", "DELETE"} else None
         req = Request(url=url, data=body, method=method.upper())
@@ -69,7 +71,9 @@ class ApiClient:
             req.add_header("Authorization", f"Bearer {self.token}")
 
         try:
-            with urlopen(req, timeout=self.timeout_s) as resp:  # nosec - intended for local/staging
+            with urlopen(
+                req, timeout=self.timeout_s
+            ) as resp:  # nosec - intended for local/staging
                 raw = resp.read().decode("utf-8")
         except HTTPError as e:
             raw = e.read().decode("utf-8") if e.fp else ""
@@ -182,12 +186,12 @@ def print_database_summary(api: ApiClient) -> None:
 def populate(api: ApiClient) -> None:
     print("Creating categories...")
     category_names = [
-        "Eläimet",
-        "Ajoneuvot",
-        "Ruoka",
-        "Urheilu",
-        "Värit",
-        "Sää",
+        "Asiakaspalvelu",
+        "Verkkoviat",
+        "Laskutus",
+        "Liittymät",
+        "Laitteet",
+        "Palvelupyynnöt",
     ]
 
     category_ids: dict[str, int] = {}
@@ -201,96 +205,91 @@ def populate(api: ApiClient) -> None:
 
     conversations_data: list[dict[str, Any]] = [
         {
-            "name": "Kultainennoutaja",
-            "summary": "Tietoa kultaisista noutajakoirista",
-            "category": "Eläimet",
+            "name": "Internet-yhteys ei toimi",
+            "summary": "Asiakkaan kiinteän laajakaistan vian selvitys",
+            "category": "Verkkoviat",
             "timestamp": now - timedelta(days=5),
             "vectors": [
-                "Kultaiset noutajat ovat ystävällisiä ja uskollisia koiria",
-                "Niillä on kullan- tai kermanvärinen turkki",
-                "Nämä koirat sopivat hyvin lapsille ja perheille",
+                "Asiakas ilmoittaa ettei internet-yhteys toimi lainkaan",
+                "Modeemin uudelleenkäynnistys ei ratkaissut ongelmaa",
+                "Verkossa havaittu alueellinen häiriö",
             ],
         },
         {
-            "name": "Persialainen kissa",
-            "summary": "Faktoja persialaisista kissoista ja niiden hoidosta",
-            "category": "Eläimet",
+            "name": "Hidas mobiilidata",
+            "summary": "Mobiiliverkon nopeusongelman käsittely",
+            "category": "Verkkoviat",
             "timestamp": now - timedelta(days=4),
             "vectors": [
-                "Persialaisilla kissoilla on pitkä ja pörröinen turkki",
-                "Ne tarvitsevat säännöllistä hoitoa ja harjausta",
-                "Persialaisilla kissoilla on litteät kasvot ja pyöreät silmät",
+                "Asiakas kokee mobiilidatan olevan erittäin hidasta",
+                "Verkon kuormitus ruuhka-aikana vaikuttaa nopeuteen",
+                "Suositellaan verkon tilan tarkistusta ja tukiaseman vaihtoa",
             ],
         },
         {
-            "name": "Punainen urheiluauto",
-            "summary": "Keskustelua punaisista urheiluautoista",
-            "category": "Ajoneuvot",
+            "name": "Laskun epäselvyys",
+            "summary": "Asiakas kysyy lisämaksuista laskulla",
+            "category": "Laskutus",
             "timestamp": now - timedelta(days=3),
             "vectors": [
-                "Punainen on suosittu väri urheiluautoille",
-                "Urheiluautot ovat nopeita ja niissä on tehokkaat moottorit",
-                "Niissä on tyypillisesti kaksi ovea ja virtaviivainen muotoilu",
-                "Punaiset urheiluautot herättävät huomiota tiellä",
+                "Asiakas huomasi ylimääräisiä maksuja laskulla",
+                "Lisämaksu johtuu palvelupaketin muutoksesta",
+                "Selitetty laskun erittely asiakkaalle",
             ],
         },
         {
-            "name": "Toyota Yaris",
-            "summary": "Tietoa Toyota Yaris -ajoneuvoista",
-            "category": "Ajoneuvot",
+            "name": "Liittymän päivitys 5G:hen",
+            "summary": "Asiakas haluaa päivittää liittymänsä",
+            "category": "Liittymät",
             "timestamp": now - timedelta(days=2),
             "vectors": [
-                "Toyota Yaris on rikkoutumaton auto",
-                "Se tunnetaan polttoainetehokkuudestaan ja luotettavuudestaan",
-                "Yaris on suosittu kaupunkiajossa",
-                "Yaris on polttoainetehokas päivittäisessä työmatka-ajossa",
-                "Kompakti mutta tilava suunnittelu-ihme",
+                "Asiakas haluaa siirtyä 5G-liittymään",
+                "Tarkistettu laitteen yhteensopivuus",
+                "Liittymän päivitys onnistuu välittömästi",
             ],
         },
         {
-            "name": "Pizzatäytteet",
-            "summary": "Eri tyyppisiä pizzatäytteitä",
-            "category": "Ruoka",
+            "name": "Modeemin asennus",
+            "summary": "Ohjeistus uuden modeemin käyttöönottoon",
+            "category": "Laitteet",
             "timestamp": now - timedelta(days=1),
             "vectors": [
-                "Pepperoni on klassinen pizzatäyte",
-                "Vihannekset kuten sienet ja paprikat ovat terveellisiä valintoja",
-                "Juusto on pizzan tärkein ainesosa",
-                "Ananas pizzassa on kiistanalainen aihe",
+                "Asiakas tarvitsee ohjeet modeemin asennukseen",
+                "Modeemi kytketään sähköön ja verkkoon",
+                "Yhteys tarkistetaan laitteen hallintasivulta",
             ],
         },
         {
-            "name": "Suklaakakku",
-            "summary": "Resepti ja ideoita suklaakakkuun",
-            "category": "Ruoka",
+            "name": "SIM-kortti ei toimi",
+            "summary": "SIM-kortin aktivointiongelma",
+            "category": "Liittymät",
             "timestamp": now - timedelta(hours=12),
             "vectors": [
-                "Suklaakakku on suosittu jälkiruoka",
-                "Se vaatii jauhoja, kananmunia, kaakaojauhetta ja sokeria",
-                "Kuorrute tekee suklaakakusta erityisen herkullisen",
+                "Asiakas ei saa yhteyttä uudella SIM-kortilla",
+                "SIM-kortti ei ole aktivoitunut järjestelmässä",
+                "Aktivointi tehty ja yhteys palautui",
             ],
         },
         {
-            "name": "Jalkapallo-ottelu",
-            "summary": "Muistiinpanoja jalkapallon säännöistä ja strategiasta",
-            "category": "Urheilu",
+            "name": "Palvelupyyntö: muutto",
+            "summary": "Liittymän siirto uuteen osoitteeseen",
+            "category": "Palvelupyynnöt",
             "timestamp": now - timedelta(hours=6),
             "vectors": [
-                "Jalkapalloa pelataan 11 pelaajalla kummassakin joukkueessa",
-                "Tavoitteena on tehdä maali potkaisemalla pallo verkkoon",
-                "Pelaajat eivät saa käyttää käsiään paitsi maalivahti",
-                "Jalkapallo-ottelut kestävät 90 minuuttia",
+                "Asiakas ilmoittaa muutosta uuteen osoitteeseen",
+                "Palvelun saatavuus tarkistettu uudessa kohteessa",
+                "Muuttopäivälle tehty palvelunsiirto",
             ],
         },
         {
-            "name": "Aurinkoinen sää",
-            "summary": "Kuvaus aurinkoisista sääolosuhteista",
-            "category": "Sää",
+            "name": "Yleinen asiakaspalvelukysely",
+            "summary": "Neuvontaa palveluiden käytöstä",
+            "category": "Asiakaspalvelu",
             "timestamp": now - timedelta(hours=3),
             "vectors": [
-                "Aurinkoiset päivät ovat valoisia ja lämpimiä",
-                "Selkeä sininen taivas ilman pilviä",
-                "Hyvä sää ulkoiluun",
+                "Asiakas kysyy palveluiden käytöstä",
+                "Annettu ohjeet ja lisätietoa palveluista",
+                "Ohjattu tarvittaessa jatkotukeen",
             ],
         },
     ]
@@ -310,11 +309,16 @@ def populate(api: ApiClient) -> None:
             information = f"Konteksti: {conv_data['name']}; Sisältö: {vector_text}"
             vec_id = create_vector(api, text=information, conv_id=conv_id)
             print(f"    Created vector (ID: {vec_id})")
+            import time as t
+
+            t.sleep(13)
             #  Add time.sleep() here if facing problems with too fast population
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Populate DB via FastAPI HTTP endpoints")
+    parser = argparse.ArgumentParser(
+        description="Populate DB via FastAPI HTTP endpoints"
+    )
     parser.add_argument(
         "--base-url",
         default="http://localhost:8000",

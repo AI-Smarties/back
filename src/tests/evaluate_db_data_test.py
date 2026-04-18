@@ -8,6 +8,7 @@ Run with:
     pytest src/tests/evaluate_db_data_test.py -v
 """
 
+import time
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
@@ -18,10 +19,11 @@ from gemini_tools import evaluate_db_data
 
 @pytest.fixture(autouse=True)
 def reset_gemini_client():
-    """Reset the global genai CLIENT between tests to avoid event loop conflicts."""
+    """Reset CLIENT and throttle calls to stay under API rate limits."""
     gemini_tools.CLIENT = None
     yield
     gemini_tools.CLIENT = None
+    time.sleep(5)
 
 
 def make_vector(text: str, timestamp_str: str = "2026-04-01 10:00:00+00:00") -> object:

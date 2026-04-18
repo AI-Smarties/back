@@ -16,7 +16,7 @@ CONFIG = cloud_speech.StreamingRecognitionConfig(
             sample_rate_hertz=16000,
             audio_channel_count=1,
         ),
-        language_codes=["auto"],
+        language_codes=["fi-FI"],
         model='chirp_3',
         features=cloud_speech.RecognitionFeatures(
             enable_automatic_punctuation=True,
