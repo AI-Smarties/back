@@ -26,7 +26,13 @@ def load_embedding_model():
         "text-multilingual-embedding-002")
 
 
+def _validate_text(text):
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError(f"Vector text must be a non-empty string, got: {type(text)}")
+
+
 def create_vector(text, conv_id):
+    _validate_text(text)
     if not EMBEDDING_MODEL:
         load_embedding_model()
     embedding = EMBEDDING_MODEL.get_embeddings(
@@ -43,6 +49,8 @@ def create_vectors_batch(texts, conv_id):
     """Create multiple vectors with a single embedding API call."""
     if not texts:
         return []
+    for t in texts:
+        _validate_text(t)
     if not EMBEDDING_MODEL:
         load_embedding_model()
     embeddings = EMBEDDING_MODEL.get_embeddings(

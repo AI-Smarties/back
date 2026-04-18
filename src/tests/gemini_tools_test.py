@@ -8,6 +8,19 @@ import db_utils
 import db
 
 
+@pytest.fixture
+def isolated_db():
+    """Drop and recreate tables before the test, then drop again after."""
+    try:
+        db.drop_tables()
+        db.create_tables()
+    except OperationalError:
+        pytest.skip("Database not available")
+    yield
+    db.drop_tables()
+    db.create_tables()
+
+
 class TestFetchInformation:
     """Test cases for fetch_information function."""
 
@@ -89,11 +102,7 @@ class TestFetchInformation:
         assert result["thinking"] == "Relevant prior context found"
 
     @pytest.mark.asyncio
-    async def test_fetch_information_user_isolation(self, monkeypatch):
-        try:
-            db.create_tables()
-        except OperationalError:
-            pytest.skip("Database not available")
+    async def test_fetch_information_user_isolation(self, monkeypatch, isolated_db):  # noqa: ARG002
 
         class _StubEmbeddingModel:  # pylint: disable=too-few-public-methods,unused-argument
             def get_embeddings(self, texts, output_dimensionality):
