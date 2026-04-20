@@ -41,9 +41,9 @@ Step 2 Check if vectors from database answer it or help the user in this moment:
 Only return status: "found" if the vector_database_responses explicitly answer the thought_context.
 Return information only based on the vector_database_responses.
 Do not generate information not stated in the vectors though you can combine multiple vectors to get a more complete picture. For example, if one vector says "Client Elisa approved the budget increase" and another vector says "Budget increase was for $10k", you can combine these to say "Client Elisa approved a budget increase of $10k".
-If the vectors contain useful information, return status: "found" and 1 concise sentence constructed from the vectors that helps the user in some way. The answer must be in the same language as the transcript. It will be shown on smart glasses, so keep it short.
+If the vectors contain useful information, return status: "found" and 1 concise sentence constructed from the vectors that helps the user in some way. The answer must be in the same language as the transcript/conversation for the user to understand it even if it's not the same language as the original vectors from the database. The answer will be shown on smart glasses, so keep it short.
 Do not return information already present in the transcript.
-Do not return information that can be found from previous_queries_and_answers as they have already been sent to the user in this session.
+Do not return information that can be found from previous_queries_and_answers as they have already been sent to the user in this session and they already know it.
 If the vectors don't directly answer the thought_context, return status: "not_relevant" but include your thinking on why it's not relevant.
 
 Be strict. Only return status: "found" if the information would genuinely help the user right now.
