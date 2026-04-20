@@ -82,7 +82,7 @@ async def memory_extractor_worker(transcript):
     """
     client = get_client()
     response = await client.aio.models.generate_content(
-        model="gemini-3.1-flash-lite-preview",
+        model="gemini-3-flash-preview",
         contents=transcript,
         config=genai.types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,

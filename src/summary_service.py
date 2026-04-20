@@ -15,7 +15,7 @@ def get_client():
         CLIENT = genai.Client(
             vertexai=True,
             project=project,
-            location="europe-north1",
+            location="global",
         )
     return CLIENT
 
@@ -28,7 +28,7 @@ def generate_summary(transcript: str) -> str | None:
     client = get_client()
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash-lite",
+        model="gemini-3-flash-preview",
         contents=transcript,
         config=genai.types.GenerateContentConfig(
             system_instruction=(
