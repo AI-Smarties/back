@@ -1,0 +1,105 @@
+Moi Liisa, ehditkö hetkeksi? Ajattelin että käydään läpi Q2:n verkko- ja asiakasprojektien tilanne ennen kuin lähetetään päivitetty raportti johdolle.
+
+Joo, käydään vaan. Miltä kokonaisuus näyttää tällä hetkellä?
+
+Kokonaisbudjetti tälle kvartaalille on 2,4 miljoonaa euroa, mutta tämänhetkinen ennuste näyttää noin 150 000 euron ylitystä. Suurin osa lisäkustannuksista tulee 5G-verkon laajennuksesta ja alihankkijoista.
+
+Kuinka paljon 5G-laajennukseen on varattu?
+
+Alkuperäinen budjetti oli 900 000 euroa, mutta nyt ennuste on noin 1,05 miljoonaa euroa. Erityisesti tukiasemien asennus Helsingissä ja Espoossa on ollut kalliimpaa kuin arvioitiin.
+
+Onko tämä hyväksytetty johdolla?
+
+Ei vielä. Ajattelin että esitetään kaksi vaihtoehtoa: joko jatketaan laajennusta suunnitellusti ja hyväksytään ylitys, tai siirretään osa asennuksista Q3:lle.
+
+Hyvä. Entä aikataulut?
+
+Helsingin alueen laajennus pitäisi valmistua 30. kesäkuuta mennessä. Espoon osalta tavoite on 15. kesäkuuta ja Vantaan alueella 10. heinäkuuta.
+
+Kuinka monta tukiasemaa tässä on mukana?
+
+Helsingissä 45, Espoossa 30 ja Vantaalla 25 tukiasemaa.
+
+Selvä. Entä asiakasmäärät?
+
+Tavoitteena on kasvattaa 5G-liittymien määrää 18 000 uudella asiakkaalla Q2:n aikana. Tällä hetkellä ollaan noin 11 500:ssa.
+
+Hyvä. Entä liikevaihto?
+
+Q2:n arvioitu liikevaihto mobiililiiketoiminnassa on noin 48 miljoonaa euroa. Kasvua edelliseen kvartaalin nähden on noin 6 prosenttia.
+
+Okei. Onko riskejä?
+
+Yksi merkittävä riski liittyy laiteviivästyksiin. Yksi toimittaja ei ole vielä vahvistanut toimitusaikataulua 12 tukiasemalle.
+
+Se voi vaikuttaa suoraan aikatauluun.
+
+Kyllä. Lisäksi asiakaspalvelun kuormitus on kasvanut viime viikolla noin 20 prosenttia uuden kampanjan vuoksi.
+
+Hyvä huomio. Pitää varmistaa resurssit sinne.
+
+Sitten vähän kevyempi asia: huomasin että meidän toimiston pysäköintipaikat on taas täynnä aamuisin.
+
+Joo, siitä on tullut palautetta. Selvitetään lisää paikkoja.
+
+Hyvä, ei liity tähän projektiin mutta ajattelin mainita.
+
+Entä markkinointi?
+
+Markkinointikampanjaan on varattu 300 000 euroa, mutta nykyinen ennuste on noin 360 000 euroa. Suurin lisä tulee digimainonnasta.
+
+Okei. Onko kampanja tuottanut tulosta?
+
+Kyllä, kampanjan konversioaste on ollut noin 3,2 prosenttia, mikä on hieman yli tavoitteen.
+
+Hyvä. Entä projektitiimi?
+
+Tällä hetkellä tiimissä on 12 henkilöä, mutta suosittelen että lisätään kaksi verkkoinsinööriä kesäkuun ajaksi, jotta aikataulussa pysytään.
+
+Onko ehdokkaita?
+
+Mikko ja Sara voisivat sopia tähän. Heillä on kokemusta vastaavista projekteista.
+
+Hyvä, edetään heidän kanssaan.
+
+Lisäksi asiakkaalta tuli toive lisätä yksi yritysasiakkaille suunnattu palvelupaketti ennen syksyä.
+
+Lisääkö se kustannuksia?
+
+Arviolta noin 75 000 euroa kehitystyöhön.
+
+Okei, se pitää huomioida seuraavan kvartaalin budjetissa.
+
+Kyllä. Sitten vielä yksi pieni asia: intranetin käyttöliittymä kaipaa päivitystä, mutta se ei ole kriittinen nyt.
+
+Hyvä tietää, mutta ei priorisoida sitä tähän.
+
+Juuri näin.
+
+Okei, tämä antaa hyvän kokonaiskuvan. Päivitetään luvut raporttiin ja viedään nämä johdolle huomenna.
+
+Sovittu.
+
+
+----------
+
+Muistettavat (tallennettavat):
+    • Budjetti: 2,4 M€ (ylitys ~150 000 €) 
+    • 5G-laajennus: 900 000 € → 1,05 M€ 
+    • Aikataulut: 
+        ◦ Helsinki 30.6. 
+        ◦ Espoo 15.6. 
+        ◦ Vantaa 10.7. 
+    • Tukiasemat: 45 / 30 / 25 
+    • Uudet asiakkaat: tavoite 18 000 (nyt 11 500) 
+    • Liikevaihto Q2: ~48 M€ (+6 %) 
+    • Riski: 12 tukiaseman toimitus viivästyy 
+    • Asiakaspalvelun kuormitus +20 % 
+    • Markkinointi: 300 000 € → 360 000 € 
+    • Konversio: 3,2 % 
+    • Tiimi: 12 henkilöä + 2 lisäresurssia (Mikko, Sara) 
+    • Uusi palvelupaketti: ~75 000 € 
+Ei tarvitse tallentaa:
+    • Pysäköintipaikkojen puute 
+    • Intranetin käyttöliittymän päivitys 
+    • Yleinen small talk ilman päätöksiä tai lukuja

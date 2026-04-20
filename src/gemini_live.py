@@ -26,7 +26,7 @@ DO NOT CALL:
 - Speculatively. Only react to what is actually said, never explore topics not mentioned
 
 QUERY FORMAT:
-- Always English, even if conversation is in another language
+- Always in the same language as the transcript
 - Descriptive with synonyms (e.g. "project budget total spent remaining euros")
 
 SECURITY:
@@ -51,9 +51,10 @@ TOOLS = [
                         "query": {
                             "type": "string",
                             "description": (
-                                "The text query that is used to query vector database."
-                                "Only in english. Concise but enough text to have good query."
-                                "Example: Client Elisa: budget of the project."
+                                "The text query that is used to query vector database. "
+                                "Must be in the same language as the conversation. "
+                                "Concise but enough text to have good query. "
+                                "Example: Client Elisa: budget of the project. "
                                 "Example: Elisa backend hire decision capacity requirements"
                             ),
                         },
