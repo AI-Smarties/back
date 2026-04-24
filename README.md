@@ -9,13 +9,13 @@ This project was created for Software Engineering Project at University of Helsi
 
 ## Frontend integration
 
-Backend is intended to be used with the [Flutter frontend](https://github.com/AI-Smarties/front)
+The backend is intended to be used with the [Flutter frontend](https://github.com/AI-Smarties/front)
 
 ---
 
 ## Setup and Running
 
-### 1. Clone repo and navigate to directory
+### 1. Clone the repository and navigate to the directory
 
 ```bash
 git clone git@github.com:AI-Smarties/back.git
@@ -71,12 +71,12 @@ docker-compose up -d
 
 This starts a PostgreSQL container with the correct configuration. You can access the database at `localhost:5432`.
 
-The application will automatically connect to localhost when running locally
-(environment variables for database are not required for local development).
+The application will automatically connect to `localhost` when running locally
+(environment variables for the database are not required for local development).
 
 ### 6. Google Cloud Authentication (ADC)
 
-The backend uses Google Cloud Speech-to-Text, Vertex AI API, Firebase and the Application Default Credentials (ADC) method.
+The backend uses Google Cloud Speech-to-Text, Vertex AI API, Firebase, and the Application Default Credentials (ADC) method.
 
 #### STEP 1: Browser Setup (Google Cloud Console)
 
@@ -94,7 +94,7 @@ Run these commands in your terminal:
 
 1. Install GCloud CLI: [Download and install here](https://cloud.google.com/sdk/docs/install).
 
-2. Login to your Google account
+2. Log in to your Google account
 
     ```bash
     gcloud auth application-default login
@@ -108,7 +108,7 @@ Run these commands in your terminal:
 
 ### 7. Firebase
 
-create the following .env file in root dir
+create the following `.env` file in the root directory:
 
 ```bash
 FIREBASE_PROJECT_ID=[PROJECT_ID]
