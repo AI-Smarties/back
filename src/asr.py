@@ -100,7 +100,7 @@ class StreamingASR:
                         if chunk is None:
                             print('[ASR] Stream closed')
                             break
-                        chunk = amplify_chunk(chunk, gain=35.0)
+                        chunk = amplify_chunk(chunk, gain=30.0)
                         yield cloud_speech.StreamingRecognizeRequest(audio=chunk)
 
                 responses = await self._client.streaming_recognize(requests=request_gen())
