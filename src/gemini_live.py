@@ -183,7 +183,6 @@ class GeminiLiveSession: # pylint: disable=too-many-instance-attributes
             chunk = amplify_chunk(chunk, gain=35.0)
         self._enqueue_chunk_nowait(chunk)
 
-     
     def _request_shutdown(self):
         try:
             self._queue.put_nowait(None)

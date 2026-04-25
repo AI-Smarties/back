@@ -140,10 +140,10 @@ class ASRInstanceBuilder:  # pylint: disable=protected-access
         self._ins.transcript = ""
         self._ins._stopped = False
 
-        def start():
+        async def start():
             self._ins._stopped = False
 
-        self._ins.start = MagicMock(side_effect=start)
+        self._ins.start = AsyncMock(side_effect=start)
 
         def stop():
             self._ins._stopped = True

@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -45,16 +45,17 @@ def test_streaming_asr_dispatch_forwards_text_to_gemini_live():
     gemini_live.push_data.assert_called_once_with("hello world")
 
 
-def test_streaming_asr_start_starts_gemini_live_and_worker_thread():
+@pytest.mark.asyncio
+async def test_streaming_asr_start_starts_gemini_live_and_creates_worker_task():
     gemini_live = Mock()
     gemini_live.start = Mock()
 
     asr = StreamingASR(gemini_live)
-    asr._prepare_streaming_metadata = Mock()
-    asr._thread.start = Mock()
+    asr._prepare_streaming_metadata = AsyncMock()
 
-    asr.start()
+    await asr.start()
 
     asr._prepare_streaming_metadata.assert_called_once()
     gemini_live.start.assert_called_once()
-    asr._thread.start.assert_called_once()
+    assert asr._task is not None
+    asr._task.cancel()
